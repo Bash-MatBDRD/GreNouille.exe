@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticateToken } from "./auth.js";
+import { authenticateToken } from "../middleware/auth.js";
 import db from "../db.js";
 
 const router = Router();

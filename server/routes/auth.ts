@@ -4,8 +4,10 @@ import jwt from "jsonwebtoken";
 import db from "../db.js";
 import { logSystemEvent } from "./logs.js";
 import nodemailer from "nodemailer";
-
 import { v4 as uuidv4 } from "uuid";
+
+export { authenticateToken } from "../middleware/auth.js";
+import { authenticateToken } from "../middleware/auth.js";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_for_dev";
@@ -25,20 +27,6 @@ nodemailer.createTestAccount().then((account) => {
     },
   });
 });
-
-// In-memory store for 2FA codes removed in favor of DB
-
-// Middleware to verify JWT
-export const authenticateToken = (req: any, res: any, next: any) => {
-  const token = req.cookies.token;
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
-
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) return res.status(403).json({ error: "Forbidden" });
-    req.user = user;
-    next();
-  });
-};
 
 router.post("/signup", async (req, res) => {
   const { username, email, password } = req.body;
@@ -356,13 +344,13 @@ router.post("/forgot-password", async (req: any, res) => {
 
       if (transporter) {
         try {
-          const resetLink = \`\${req.protocol}://\${req.get('host')}/reset-password?token=\${token}\`;
+          const resetLink = `\${req.protocol}://\${req.get('host')}/reset-password?token=\${token}`;
           const info = await transporter.sendMail({
             from: '"Nexus Security" <security@nexus.app>',
             to: user.email,
             subject: "Password Reset Request",
-            text: \`Click here to reset your password: \${resetLink}\nThis link expires in 15 minutes.\`,
-            html: \`<b>Click <a href="\${resetLink}">here</a> to reset your password.</b><br>This link expires in 15 minutes.\`,
+            text: `Click here to reset your password: \${resetLink}\nThis link expires in 15 minutes.`,
+            html: `<b>Click <a href="\${resetLink}">here</a> to reset your password.</b><br>This link expires in 15 minutes.`,
           });
           console.log("Password Reset Preview URL: %s", nodemailer.getTestMessageUrl(info));
         } catch (err) {
