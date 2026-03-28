@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import axios from "axios";
-import { Leaf, Mail } from "lucide-react";
+import { supabase } from "../lib/supabase";
+import { Mail, Loader2 } from "lucide-react";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -13,12 +13,16 @@ export default function ForgotPassword() {
     e.preventDefault();
     setStatus("loading");
     try {
-      const res = await axios.post("/api/auth/forgot-password", { email });
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+      if (error) throw error;
       setStatus("success");
-      setMessage(res.data.message);
+      setMessage("A reset link has been sent to your email address.");
     } catch (err: any) {
       setStatus("error");
-      setMessage(err.response?.data?.error || "Failed to process request");
+      setMessage(err.message || "Failed to send reset link");
     }
   };
 
@@ -32,7 +36,7 @@ export default function ForgotPassword() {
       >
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20 shadow-[0_0_20px_rgba(57,255,20,0.2)]">
-            <Leaf className="h-8 w-8 text-[#39FF14] drop-shadow-[0_0_15px_rgba(57,255,20,1)]" />
+            <span className="font-mono text-xl font-bold text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,1)]">&gt;_</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Reset Password</h1>
           <p className="mt-2 text-sm text-gray-400">
@@ -51,6 +55,9 @@ export default function ForgotPassword() {
             <div className="mb-6 rounded-lg bg-[#39FF14]/10 p-4 text-sm text-[#39FF14] border border-[#39FF14]/20">
               {message}
             </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Check your inbox (and spam folder) for the link.
+            </p>
             <Link to="/login" className="font-medium text-[#39FF14] hover:text-[#00FF00]">
               Return to Login
             </Link>
@@ -68,15 +75,17 @@ export default function ForgotPassword() {
                   className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-12 pr-4 text-white placeholder-gray-500 outline-none transition-all focus:border-[#39FF14] focus:bg-white/10 focus:ring-1 focus:ring-[#39FF14]"
                   placeholder="admin@nexus.com"
                   required
+                  autoComplete="email"
                 />
               </div>
             </div>
-            
+
             <button
               type="submit"
               disabled={status === "loading"}
-              className="w-full rounded-xl bg-gradient-to-r from-[#39FF14] to-[#00FF00] px-4 py-3 font-bold text-black shadow-[0_0_20px_rgba(57,255,20,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-xl bg-gradient-to-r from-[#39FF14] to-[#00FF00] px-4 py-3 font-bold text-black shadow-[0_0_20px_rgba(57,255,20,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
+              {status === "loading" && <Loader2 className="h-4 w-4 animate-spin" />}
               {status === "loading" ? "Sending..." : "Send Reset Link"}
             </button>
           </form>

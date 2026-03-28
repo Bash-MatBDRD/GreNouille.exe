@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Music, MessageSquare, LogOut, Settings, User, ActivitySquare, ChevronLeft, ChevronRight, Leaf, Shield, Database, Terminal } from "lucide-react";
+import { LayoutDashboard, Music, MessageSquare, LogOut, Settings, User, ActivitySquare, ChevronLeft, ChevronRight, Shield, Database, Terminal } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import axios from "axios";
 
 export default function Sidebar() {
-  const { setUser } = useAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
@@ -13,8 +12,7 @@ export default function Sidebar() {
   const isCollapsed = !isPinned && !isHovered;
 
   const handleLogout = async () => {
-    await axios.post("/api/auth/logout");
-    setUser(null);
+    await signOut();
     navigate("/login");
   };
 
@@ -46,7 +44,7 @@ export default function Sidebar() {
 
       <div className={`mb-12 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-2 mt-4`}>
         <div className="flex shrink-0 items-center justify-center">
-          <Leaf className="h-8 w-8 text-[#39FF14] drop-shadow-[0_0_15px_rgba(57,255,20,1)]" />
+          <span className="font-mono text-xl font-bold text-[#39FF14] drop-shadow-[0_0_15px_rgba(57,255,20,1)]">&gt;_</span>
         </div>
         {!isCollapsed && (
           <h1 

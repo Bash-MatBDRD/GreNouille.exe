@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import React, { useState } from "react";
 import Splashscreen from "./components/Splashscreen";
+import LoadingScreen from "./components/LoadingScreen";
 import Sidebar from "./components/Sidebar";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -20,7 +21,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <LoadingScreen />;
   return user ? <>{children}</> : <Navigate to="/login" />;
 }
 
@@ -153,4 +154,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-

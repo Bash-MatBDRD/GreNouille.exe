@@ -1,18 +1,29 @@
-import React, { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import axios from "axios";
-import { Leaf, Lock } from "lucide-react";
+import { supabase } from "../lib/supabase";
+import { Lock, Loader2 } from "lucide-react";
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
-  
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [ready, setReady] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setReady(true);
+      }
+    });
+
+    const hash = window.location.hash;
+    if (hash && hash.includes("type=recovery")) {
+      setReady(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,26 +32,30 @@ export default function ResetPassword() {
       setMessage("Passwords do not match");
       return;
     }
-
     setStatus("loading");
     try {
-      const res = await axios.post("/api/auth/reset-password", { token, newPassword: password });
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
       setStatus("success");
-      setMessage(res.data.message);
+      setMessage("Password updated successfully!");
       setTimeout(() => navigate("/login"), 3000);
     } catch (err: any) {
       setStatus("error");
-      setMessage(err.response?.data?.error || "Failed to reset password");
+      setMessage(err.message || "Failed to reset password");
     }
   };
 
-  if (!token) {
+  if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#050505] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(57,255,20,0.15),rgba(255,255,255,0))]">
         <div className="w-full max-w-md rounded-3xl border border-white/10 bg-black/40 p-8 text-center backdrop-blur-xl">
           <h1 className="text-2xl font-bold text-white mb-4">Invalid Link</h1>
-          <p className="text-gray-400 mb-6">The password reset link is invalid or missing.</p>
-          <Link to="/forgot-password" className="text-[#39FF14] hover:underline">Request a new link</Link>
+          <p className="text-gray-400 mb-6">
+            This reset link is invalid or has expired.
+          </p>
+          <Link to="/forgot-password" className="text-[#39FF14] hover:underline">
+            Request a new link
+          </Link>
         </div>
       </div>
     );
@@ -56,12 +71,10 @@ export default function ResetPassword() {
       >
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20 shadow-[0_0_20px_rgba(57,255,20,0.2)]">
-            <Leaf className="h-8 w-8 text-[#39FF14] drop-shadow-[0_0_15px_rgba(57,255,20,1)]" />
+            <span className="font-mono text-xl font-bold text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,1)]">&gt;_</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">New Password</h1>
-          <p className="mt-2 text-sm text-gray-400">
-            Enter your new password below
-          </p>
+          <p className="mt-2 text-sm text-gray-400">Enter your new password below</p>
         </div>
 
         {status === "error" && (
@@ -91,6 +104,7 @@ export default function ResetPassword() {
                   placeholder="••••••••"
                   required
                   minLength={6}
+                  autoComplete="new-password"
                 />
               </div>
             </div>
@@ -107,15 +121,17 @@ export default function ResetPassword() {
                   placeholder="••••••••"
                   required
                   minLength={6}
+                  autoComplete="new-password"
                 />
               </div>
             </div>
-            
+
             <button
               type="submit"
               disabled={status === "loading"}
-              className="w-full rounded-xl bg-gradient-to-r from-[#39FF14] to-[#00FF00] px-4 py-3 font-bold text-black shadow-[0_0_20px_rgba(57,255,20,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-xl bg-gradient-to-r from-[#39FF14] to-[#00FF00] px-4 py-3 font-bold text-black shadow-[0_0_20px_rgba(57,255,20,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
+              {status === "loading" && <Loader2 className="h-4 w-4 animate-spin" />}
               {status === "loading" ? "Resetting..." : "Reset Password"}
             </button>
           </form>
