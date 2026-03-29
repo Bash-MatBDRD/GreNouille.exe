@@ -1,20 +1,46 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Nexus Panel
 
-# Run and deploy your AI Studio app
+A personal dashboard panel with Spotify, Discord and system analytics integrations. Built with React, Express and Supabase.
 
-This contains everything you need to run your app locally.
+## Stack
 
-View your app in AI Studio: https://ai.studio/apps/2eb40f6f-d6c0-4774-b53f-d0bf7089dbc7
+- **Frontend** — React 19, Tailwind CSS 4, React Router 7, Recharts
+- **Backend** — Express, SQLite (better-sqlite3)
+- **Auth** — Supabase
+- **Deployment** — Vercel
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js 18+
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```bash
+   npm install
+   ```
+
+2. Create a `.env` file at the root and fill in your credentials:
+   ```env
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+   JWT_SECRET=your_jwt_secret
+   ```
+
+3. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+
+The app runs on [http://localhost:5000](http://localhost:5000).
+
+## Deploy to Vercel
+
+The project includes a `vercel.json` configuration. Just connect your repo to Vercel and add the environment variables listed above in the Vercel dashboard.
+
+## Features
+
+- Authentication via Supabase
+- Spotify integration
+- Discord integration
+- System analytics & logs
+- SQLite local database
