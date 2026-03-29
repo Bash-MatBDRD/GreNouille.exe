@@ -2,32 +2,42 @@ import { useLanguage } from "../context/LanguageContext";
 
 export default function LanguageSwitcher() {
   const { lang, toggle } = useLanguage();
+  const isFR = lang === "FR";
 
   return (
     <button
       onClick={toggle}
-      className="flex items-center rounded-full border border-white/10 overflow-hidden select-none"
+      aria-label="Toggle language"
+      className="relative flex items-center rounded-full select-none cursor-pointer"
       style={{
         background: "rgba(255,255,255,0.04)",
-        boxShadow: "0 0 0 1px rgba(255,255,255,0.06)",
+        border: "1px solid rgba(255,255,255,0.10)",
+        boxShadow: "0 0 0 1px rgba(255,255,255,0.04)",
+        padding: "3px",
+        gap: 0,
       }}
-      aria-label="Toggle language"
     >
+      <div
+        className="absolute rounded-full transition-all duration-300 ease-in-out"
+        style={{
+          width: "calc(50% - 3px)",
+          height: "calc(100% - 6px)",
+          top: "3px",
+          left: "3px",
+          background: "linear-gradient(135deg, #4F6EF7 0%, #7C3AED 100%)",
+          boxShadow: "0 0 12px rgba(79,110,247,0.5)",
+          transform: isFR ? "translateX(0%)" : "translateX(100%)",
+        }}
+      />
       {(["FR", "EN"] as const).map((l) => (
         <span
           key={l}
-          className="px-3 py-1 text-xs font-bold transition-all duration-200"
-          style={
-            lang === l
-              ? {
-                  background: "linear-gradient(135deg, #4F6EF7 0%, #7C3AED 100%)",
-                  color: "#ffffff",
-                  boxShadow: "0 0 10px rgba(79,110,247,0.4)",
-                }
-              : {
-                  color: "rgba(255,255,255,0.35)",
-                }
-          }
+          className="relative z-10 px-3 py-1 text-xs font-bold transition-colors duration-300"
+          style={{
+            color: lang === l ? "#ffffff" : "rgba(255,255,255,0.35)",
+            minWidth: "36px",
+            textAlign: "center",
+          }}
         >
           {l}
         </span>
