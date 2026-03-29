@@ -14,5 +14,8 @@ export default defineConfig({
     hmr: true,
     host: '0.0.0.0',
     allowedHosts: true,
+    watch: {
+      ignored: ['**/.local/**', '**/node_modules/**', '**/data/**'],
+    },
   },
 });
