@@ -38,8 +38,26 @@ export default function Login() {
         className="w-full max-w-md rounded-3xl border border-white/10 bg-black/40 p-8 shadow-[0_0_40px_rgba(57,255,20,0.1)] backdrop-blur-xl"
       >
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20 shadow-[0_0_20px_rgba(57,255,20,0.2)]">
-            <span className="font-mono text-xl font-bold text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,1)]">&gt;_</span>
+          <div
+            className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl"
+            style={{
+              background: "linear-gradient(145deg, rgba(57,255,20,0.14) 0%, rgba(0,200,0,0.04) 100%)",
+              border: "1px solid rgba(57,255,20,0.28)",
+              boxShadow: "0 0 40px rgba(57,255,20,0.18), 0 0 80px rgba(57,255,20,0.06)",
+            }}
+          >
+            <span
+              className="text-3xl font-black select-none leading-none"
+              style={{
+                background: "linear-gradient(135deg, #ffffff 20%, #39FF14 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                filter: "drop-shadow(0 0 12px rgba(57,255,20,0.9))",
+                letterSpacing: "-0.03em",
+              }}
+            >
+              N
+            </span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Welcome Back</h1>
           <p className="mt-2 text-sm text-gray-400">

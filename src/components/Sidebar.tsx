@@ -43,8 +43,26 @@ export default function Sidebar() {
       </button>
 
       <div className={`mb-12 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-2 mt-4`}>
-        <div className="flex shrink-0 items-center justify-center">
-          <span className="font-mono text-xl font-bold text-[#39FF14] drop-shadow-[0_0_15px_rgba(57,255,20,1)]">&gt;_</span>
+        <div
+          className="flex shrink-0 h-8 w-8 items-center justify-center rounded-lg"
+          style={{
+            background: "linear-gradient(145deg, rgba(57,255,20,0.15) 0%, rgba(0,200,0,0.04) 100%)",
+            border: "1px solid rgba(57,255,20,0.28)",
+            boxShadow: "0 0 14px rgba(57,255,20,0.18)",
+          }}
+        >
+          <span
+            className="text-sm font-black select-none leading-none"
+            style={{
+              background: "linear-gradient(135deg, #ffffff 20%, #39FF14 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 0 6px rgba(57,255,20,0.8))",
+              letterSpacing: "-0.03em",
+            }}
+          >
+            N
+          </span>
         </div>
         {!isCollapsed && (
           <h1 
