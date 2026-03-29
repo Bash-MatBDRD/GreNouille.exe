@@ -50,8 +50,16 @@ See `.env.example` for required variables:
 - `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` - Spotify OAuth credentials
 - `DISCORD_BOT_TOKEN` / `DISCORD_CHANNEL_ID` - Discord bot credentials
 
+## Environment Variables (Supabase)
+The app also uses Supabase for authentication:
+- `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` - Server-side Supabase admin client
+- `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` - Client-side Supabase client
+
+Both Supabase clients are lazily initialized — the app starts without them, but auth features require them to be configured via Replit Secrets.
+
 ## Key Notes
 - The `authenticateToken` middleware lives in `server/middleware/auth.ts` (extracted to avoid circular dependency between `auth.ts` routes and `logs.ts`)
-- `uuid` package is installed separately (not in original package.json)
 - SQLite database is used via `better-sqlite3`
 - Vite is configured with `allowedHosts: true` for Replit proxy compatibility
+- `server/lib/supabaseAdmin.ts` uses lazy initialization to avoid crashing on startup when env vars are not set
+- `src/lib/supabase.ts` uses placeholder credentials to avoid crashing when Supabase env vars are not set
