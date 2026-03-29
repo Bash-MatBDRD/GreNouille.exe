@@ -46,27 +46,31 @@ export default function Sidebar() {
         <div
           className="flex shrink-0 h-8 w-8 items-center justify-center rounded-lg"
           style={{
-            background: "linear-gradient(145deg, rgba(57,255,20,0.15) 0%, rgba(0,200,0,0.04) 100%)",
-            border: "1px solid rgba(57,255,20,0.28)",
-            boxShadow: "0 0 14px rgba(57,255,20,0.18)",
+            background: "linear-gradient(145deg, rgba(79,110,247,0.22) 0%, rgba(124,58,237,0.14) 100%)",
+            border: "1px solid rgba(255,255,255,0.13)",
+            boxShadow: "0 0 0 1px rgba(79,110,247,0.15), 0 0 14px rgba(79,110,247,0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
           }}
         >
           <span
             className="text-sm font-black select-none leading-none"
             style={{
-              background: "linear-gradient(135deg, #ffffff 20%, #39FF14 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              filter: "drop-shadow(0 0 6px rgba(57,255,20,0.8))",
-              letterSpacing: "-0.03em",
+              color: "#ffffff",
+              textShadow: "0 0 10px rgba(100,130,255,0.9), 0 0 20px rgba(79,110,247,0.5)",
+              letterSpacing: "-0.04em",
+              fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
             }}
           >
             N
           </span>
         </div>
         {!isCollapsed && (
-          <h1 
-            className="text-xl font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-[#39FF14] to-[#00FF00] drop-shadow-[0_0_10px_rgba(57,255,20,0.8)] whitespace-nowrap"
+          <h1
+            className="text-xl font-black tracking-[0.2em] whitespace-nowrap"
+            style={{
+              background: "linear-gradient(135deg, #ffffff 0%, rgba(160,180,255,0.85) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
           >
             NEXUS
           </h1>
@@ -81,8 +85,8 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `group relative flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} rounded-xl px-3 py-3 text-sm font-medium transition-colors duration-200 ${
                 isActive
-                  ? "bg-[#39FF14]/10 text-[#39FF14] border border-[#39FF14]/20"
-                  : "text-gray-400 hover:bg-white/5 hover:text-[#39FF14]"
+                  ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                  : "text-gray-400 hover:bg-white/5 hover:text-indigo-300"
               }`
             }
             title={isCollapsed ? item.label : undefined}

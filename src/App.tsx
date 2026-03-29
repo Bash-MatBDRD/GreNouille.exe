@@ -27,7 +27,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-[#050505] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(57,255,20,0.15),rgba(255,255,255,0))] text-white">
+    <div className="flex min-h-screen bg-[#05050f] text-white" style={{ backgroundImage: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79,110,247,0.12), transparent)" }}>
       <Sidebar />
       <main className="flex-1 overflow-y-auto custom-scrollbar">
         {children}

@@ -4,6 +4,23 @@ import { motion } from "motion/react";
 import { supabase } from "../lib/supabase";
 import { Loader2 } from "lucide-react";
 
+const logoStyle = {
+  background: "linear-gradient(145deg, rgba(79,110,247,0.22) 0%, rgba(124,58,237,0.14) 100%)",
+  border: "1px solid rgba(255,255,255,0.13)",
+  boxShadow: "0 0 0 1px rgba(79,110,247,0.15), 0 0 30px rgba(79,110,247,0.25), inset 0 1px 0 rgba(255,255,255,0.18)",
+};
+const pageStyle = {
+  background: "#05050f",
+  backgroundImage: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79,110,247,0.18), transparent)",
+};
+const cardStyle = {
+  boxShadow: "0 0 40px rgba(79,110,247,0.1), 0 0 80px rgba(79,110,247,0.04)",
+};
+const btnStyle = {
+  background: "linear-gradient(135deg, #4F6EF7 0%, #7C3AED 100%)",
+  boxShadow: "0 0 20px rgba(79,110,247,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
+};
+
 export default function Signup() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -21,12 +38,9 @@ export default function Signup() {
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: { username },
-        },
+        options: { data: { username } },
       });
       if (authError) throw authError;
-
       if (data.session) {
         navigate("/dashboard");
       } else {
@@ -41,21 +55,23 @@ export default function Signup() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050505] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(57,255,20,0.15),rgba(255,255,255,0))]">
+      <div className="flex min-h-screen items-center justify-center" style={pageStyle}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md rounded-3xl border border-white/10 bg-black/40 p-8 text-center shadow-[0_0_40px_rgba(57,255,20,0.1)] backdrop-blur-xl"
+          className="w-full max-w-md rounded-3xl border border-white/10 bg-black/40 p-8 text-center backdrop-blur-xl"
+          style={cardStyle}
         >
-          <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20">
-            <span className="font-mono text-xl font-bold text-[#39FF14]">&gt;_</span>
+          <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-2xl" style={logoStyle}>
+            <span className="text-3xl font-black select-none leading-none" style={{ color: "#fff", textShadow: "0 0 16px rgba(100,130,255,0.9)", letterSpacing: "-0.04em" }}>N</span>
           </div>
           <h2 className="text-2xl font-bold text-white mb-3">Check your email</h2>
           <p className="text-gray-400 text-sm mb-6">
-            We've sent a confirmation link to <span className="text-[#39FF14]">{email}</span>.
+            We've sent a confirmation link to{" "}
+            <span className="text-indigo-400">{email}</span>.
             Please click it to activate your account.
           </p>
-          <Link to="/login" className="font-medium text-[#39FF14] hover:text-[#00FF00] text-sm">
+          <Link to="/login" className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors text-sm">
             Back to login
           </Link>
         </motion.div>
@@ -64,16 +80,17 @@ export default function Signup() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#050505] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(57,255,20,0.15),rgba(255,255,255,0))]">
+    <div className="flex min-h-screen items-center justify-center" style={pageStyle}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-md rounded-3xl border border-white/10 bg-black/40 p-8 shadow-[0_0_40px_rgba(57,255,20,0.1)] backdrop-blur-xl"
+        className="w-full max-w-md rounded-3xl border border-white/10 bg-black/40 p-8 backdrop-blur-xl"
+        style={cardStyle}
       >
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20 shadow-[0_0_20px_rgba(57,255,20,0.2)]">
-            <span className="font-mono text-xl font-bold text-[#39FF14] drop-shadow-[0_0_10px_rgba(57,255,20,1)]">&gt;_</span>
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl" style={logoStyle}>
+            <span className="text-3xl font-black select-none leading-none" style={{ color: "#fff", textShadow: "0 0 16px rgba(100,130,255,0.9), 0 0 36px rgba(79,110,247,0.5)", letterSpacing: "-0.04em", fontFamily: "system-ui, -apple-system, sans-serif" }}>N</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Create Account</h1>
           <p className="mt-2 text-sm text-gray-400">Join Nexus Dashboard today</p>
@@ -92,7 +109,7 @@ export default function Signup() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 outline-none transition-all focus:border-[#39FF14] focus:bg-white/10 focus:ring-1 focus:ring-[#39FF14]"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 outline-none transition-all focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
               placeholder="johndoe"
               required
               autoComplete="username"
@@ -104,7 +121,7 @@ export default function Signup() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 outline-none transition-all focus:border-[#39FF14] focus:bg-white/10 focus:ring-1 focus:ring-[#39FF14]"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 outline-none transition-all focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
               placeholder="john@example.com"
               required
               autoComplete="email"
@@ -116,7 +133,7 @@ export default function Signup() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 outline-none transition-all focus:border-[#39FF14] focus:bg-white/10 focus:ring-1 focus:ring-[#39FF14]"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 outline-none transition-all focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
               placeholder="••••••••"
               required
               minLength={6}
@@ -126,7 +143,8 @@ export default function Signup() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-4 w-full rounded-xl bg-gradient-to-r from-[#39FF14] to-[#00FF00] px-4 py-3 font-bold text-black shadow-[0_0_20px_rgba(57,255,20,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="mt-4 w-full rounded-xl px-4 py-3 font-bold text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={btnStyle}
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             {loading ? "Creating account..." : "Sign Up"}
@@ -135,7 +153,7 @@ export default function Signup() {
 
         <p className="mt-8 text-center text-sm text-gray-400">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-[#39FF14] hover:text-[#00FF00]">
+          <Link to="/login" className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
             Sign in
           </Link>
         </p>

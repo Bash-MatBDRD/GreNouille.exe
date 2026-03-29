@@ -30,30 +30,37 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#050505] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(57,255,20,0.15),rgba(255,255,255,0))]">
+    <div
+      className="flex min-h-screen items-center justify-center"
+      style={{
+        background: "#05050f",
+        backgroundImage:
+          "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79,110,247,0.18), transparent)",
+      }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-md rounded-3xl border border-white/10 bg-black/40 p-8 shadow-[0_0_40px_rgba(57,255,20,0.1)] backdrop-blur-xl"
+        className="w-full max-w-md rounded-3xl border border-white/10 bg-black/40 p-8 backdrop-blur-xl"
+        style={{ boxShadow: "0 0 40px rgba(79,110,247,0.1), 0 0 80px rgba(79,110,247,0.04)" }}
       >
         <div className="mb-8 flex flex-col items-center text-center">
           <div
             className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl"
             style={{
-              background: "linear-gradient(145deg, rgba(57,255,20,0.14) 0%, rgba(0,200,0,0.04) 100%)",
-              border: "1px solid rgba(57,255,20,0.28)",
-              boxShadow: "0 0 40px rgba(57,255,20,0.18), 0 0 80px rgba(57,255,20,0.06)",
+              background: "linear-gradient(145deg, rgba(79,110,247,0.22) 0%, rgba(124,58,237,0.14) 100%)",
+              border: "1px solid rgba(255,255,255,0.13)",
+              boxShadow: "0 0 0 1px rgba(79,110,247,0.15), 0 0 30px rgba(79,110,247,0.25), inset 0 1px 0 rgba(255,255,255,0.18)",
             }}
           >
             <span
               className="text-3xl font-black select-none leading-none"
               style={{
-                background: "linear-gradient(135deg, #ffffff 20%, #39FF14 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                filter: "drop-shadow(0 0 12px rgba(57,255,20,0.9))",
-                letterSpacing: "-0.03em",
+                color: "#ffffff",
+                textShadow: "0 0 16px rgba(100,130,255,0.9), 0 0 36px rgba(79,110,247,0.5)",
+                letterSpacing: "-0.04em",
+                fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
               }}
             >
               N
@@ -78,7 +85,7 @@ export default function Login() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 outline-none transition-all focus:border-[#39FF14] focus:bg-white/10 focus:ring-1 focus:ring-[#39FF14]"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 outline-none transition-all focus:border-indigo-500/60 focus:bg-white/8 focus:ring-1 focus:ring-indigo-500/40"
               placeholder="admin@nexus.com"
               required
               autoComplete="email"
@@ -87,7 +94,10 @@ export default function Login() {
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className="block text-sm font-medium text-gray-300">Password</label>
-              <Link to="/forgot-password" className="text-xs text-[#39FF14] hover:text-[#00FF00]">
+              <Link
+                to="/forgot-password"
+                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
                 Forgot password?
               </Link>
             </div>
@@ -95,7 +105,7 @@ export default function Login() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 outline-none transition-all focus:border-[#39FF14] focus:bg-white/10 focus:ring-1 focus:ring-[#39FF14]"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 outline-none transition-all focus:border-indigo-500/60 focus:bg-white/8 focus:ring-1 focus:ring-indigo-500/40"
               placeholder="••••••••"
               required
               autoComplete="current-password"
@@ -105,7 +115,11 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-gradient-to-r from-[#39FF14] to-[#00FF00] px-4 py-3 font-bold text-black shadow-[0_0_20px_rgba(57,255,20,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full rounded-xl px-4 py-3 font-bold text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={{
+              background: "linear-gradient(135deg, #4F6EF7 0%, #7C3AED 100%)",
+              boxShadow: "0 0 20px rgba(79,110,247,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
+            }}
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             {loading ? "Signing in..." : "Sign In"}
@@ -114,7 +128,10 @@ export default function Login() {
 
         <p className="mt-8 text-center text-sm text-gray-400">
           Don't have an account?{" "}
-          <Link to="/signup" className="font-medium text-[#39FF14] hover:text-[#00FF00]">
+          <Link
+            to="/signup"
+            className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
             Sign up
           </Link>
         </p>
