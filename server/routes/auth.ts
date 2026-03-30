@@ -110,4 +110,52 @@ router.post("/sessions/:id/revoke", authenticateToken, (req: any, res) => {
   }
 });
 
+router.patch("/profile", authenticateToken, async (req: any, res) => {
+  try {
+    const { username, email } = req.body;
+    if (!username && !email) return res.status(400).json({ error: "Nothing to update" });
+
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (username) { fields.push("username = ?"); values.push(username.trim()); }
+    if (email) { fields.push("email = ?"); values.push(email.trim().toLowerCase()); }
+
+    values.push(req.user.id);
+    db.prepare(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+
+    const updated = db.prepare("SELECT id, username, email, twoFactorEnabled, spotifyAccessToken FROM users WHERE id = ?").get(req.user.id) as any;
+    logSystemEvent("info", `User ${req.user.username} updated profile`);
+    res.json({ user: { ...updated, hasSpotify: !!updated.spotifyAccessToken } });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+router.patch("/password", authenticateToken, async (req: any, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: "Both passwords required" });
+    if (newPassword.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
+
+    const user = db.prepare("SELECT password FROM users WHERE id = ?").get(req.user.id) as any;
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const valid = await bcrypt.compare(currentPassword, user.password);
+    if (!valid) return res.status(401).json({ error: "Current password is incorrect" });
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+    db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashed, req.user.id);
+    logSystemEvent("info", `User ${req.user.username} changed password`);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to update password" });
+  }
+});
+
+router.get("/discord/status", authenticateToken, (_req, res) => {
+  const configured = !!(process.env.DISCORD_BOT_TOKEN && process.env.DISCORD_CHANNEL_ID);
+  res.json({ configured });
+});
+
 export default router;

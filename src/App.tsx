@@ -19,6 +19,7 @@ import Database from "./pages/Database";
 import SystemLogs from "./pages/SystemLogs";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LanguageProvider } from "./context/LanguageContext";
+import { useIsMobile } from "./hooks/useMediaQuery";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -27,10 +28,15 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppLayout({ children }: { children: React.ReactNode }) {
+  const isMobile = useIsMobile();
+
   return (
-    <div className="flex min-h-screen bg-[#05050f] text-white" style={{ backgroundImage: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79,110,247,0.12), transparent)" }}>
+    <div
+      className="flex min-h-screen bg-[#05050f] text-white"
+      style={{ backgroundImage: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79,110,247,0.12), transparent)" }}
+    >
       <Sidebar />
-      <main className="flex-1 overflow-y-auto custom-scrollbar">
+      <main className={`flex-1 overflow-y-auto custom-scrollbar ${isMobile ? "pb-20" : ""}`}>
         {children}
       </main>
     </div>

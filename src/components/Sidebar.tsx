@@ -2,12 +2,16 @@ import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Music, MessageSquare, LogOut, Settings, User, ActivitySquare, ChevronLeft, ChevronRight, Shield, Database, Terminal } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
+import { useIsMobile } from "../hooks/useMediaQuery";
 
 export default function Sidebar() {
   const { signOut } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
+  const isMobile = useIsMobile();
 
   const isCollapsed = !isPinned && !isHovered;
 
@@ -17,23 +21,73 @@ export default function Sidebar() {
   };
 
   const navItems = [
-    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/spotify", icon: Music, label: "Spotify Player" },
-    { to: "/discord", icon: MessageSquare, label: "Discord Bot" },
-    { to: "/analytics", icon: ActivitySquare, label: "Analytics" },
-    { to: "/security", icon: Shield, label: "Security" },
-    { to: "/database", icon: Database, label: "Database" },
-    { to: "/logs", icon: Terminal, label: "System Logs" },
-    { to: "/profile", icon: User, label: "Profile" },
-    { to: "/settings", icon: Settings, label: "Settings" },
+    { to: "/dashboard", icon: LayoutDashboard, label: t.nav.dashboard },
+    { to: "/spotify", icon: Music, label: t.nav.spotify },
+    { to: "/discord", icon: MessageSquare, label: t.nav.discord },
+    { to: "/analytics", icon: ActivitySquare, label: t.nav.analytics },
+    { to: "/security", icon: Shield, label: t.nav.security },
+    { to: "/database", icon: Database, label: t.nav.database },
+    { to: "/logs", icon: Terminal, label: t.nav.logs },
+    { to: "/profile", icon: User, label: t.nav.profile },
+    { to: "/settings", icon: Settings, label: t.nav.settings },
   ];
 
+  if (isMobile) {
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050505]/95 backdrop-blur-xl">
+        <div className="flex items-center justify-around px-2 py-2">
+          {navItems.slice(0, 5).map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${
+                  isActive
+                    ? "text-indigo-300"
+                    : "text-gray-500 hover:text-indigo-300"
+                }`
+              }
+            >
+              <item.icon className="h-5 w-5 shrink-0" />
+            </NavLink>
+          ))}
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${
+                isActive ? "text-indigo-300" : "text-gray-500 hover:text-indigo-300"
+              }`
+            }
+          >
+            <User className="h-5 w-5 shrink-0" />
+          </NavLink>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${
+                isActive ? "text-indigo-300" : "text-gray-500 hover:text-indigo-300"
+              }`
+            }
+          >
+            <Settings className="h-5 w-5 shrink-0" />
+          </NavLink>
+          <button
+            onClick={handleLogout}
+            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-gray-500 transition-colors hover:text-red-400"
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+          </button>
+        </div>
+      </nav>
+    );
+  }
+
   return (
-    <div 
+    <div
       style={{ width: isCollapsed ? 80 : 256 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="relative flex h-screen flex-col border-r border-white/10 bg-[#050505] p-4 z-50 transition-[width] duration-200 ease-in-out"
+      className="relative flex h-screen flex-col border-r border-white/10 bg-[#050505] p-4 z-50 transition-[width] duration-200 ease-in-out shrink-0"
     >
       <button
         onClick={() => setIsPinned(!isPinned)}
@@ -42,7 +96,7 @@ export default function Sidebar() {
         {isPinned ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </button>
 
-      <div className={`mb-12 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-2 mt-4`}>
+      <div className={`mb-12 flex items-center ${isCollapsed ? "justify-center" : "gap-3"} px-2 mt-4`}>
         <div
           className="flex shrink-0 h-8 w-8 items-center justify-center rounded-lg"
           style={{
@@ -83,7 +137,7 @@ export default function Sidebar() {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `group relative flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} rounded-xl px-3 py-3 text-sm font-medium transition-colors duration-200 ${
+              `group relative flex items-center ${isCollapsed ? "justify-center" : "gap-3"} rounded-xl px-3 py-3 text-sm font-medium transition-colors duration-200 ${
                 isActive
                   ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
                   : "text-gray-400 hover:bg-white/5 hover:text-indigo-300"
@@ -101,11 +155,11 @@ export default function Sidebar() {
 
       <button
         onClick={handleLogout}
-        className={`group flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} rounded-xl px-3 py-3 text-sm font-medium text-gray-400 transition-colors duration-200 hover:bg-red-500/10 hover:text-red-400`}
-        title={isCollapsed ? "Logout" : undefined}
+        className={`group flex items-center ${isCollapsed ? "justify-center" : "gap-3"} rounded-xl px-3 py-3 text-sm font-medium text-gray-400 transition-colors duration-200 hover:bg-red-500/10 hover:text-red-400`}
+        title={isCollapsed ? t.nav.logout : undefined}
       >
-        <LogOut className={`h-5 w-5 shrink-0 transition-transform duration-200 ${isCollapsed ? '' : 'group-hover:-translate-x-1'}`} />
-        {!isCollapsed && <span className="whitespace-nowrap">Logout</span>}
+        <LogOut className={`h-5 w-5 shrink-0 transition-transform duration-200 ${isCollapsed ? "" : "group-hover:-translate-x-1"}`} />
+        {!isCollapsed && <span className="whitespace-nowrap">{t.nav.logout}</span>}
       </button>
     </div>
   );
