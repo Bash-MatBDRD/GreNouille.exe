@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Music, MessageSquare, LogOut, Settings, User, ActivitySquare, ChevronLeft, ChevronRight, Shield, Database, Terminal } from "lucide-react";
+import { LayoutDashboard, Music, MessageSquare, LogOut, Settings, User, StickyNote, ChevronLeft, ChevronRight, Shield, Bookmark, CheckSquare } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useIsMobile } from "../hooks/useMediaQuery";
 
 export default function Sidebar() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
@@ -24,13 +24,16 @@ export default function Sidebar() {
     { to: "/dashboard", icon: LayoutDashboard, label: t.nav.dashboard },
     { to: "/spotify", icon: Music, label: t.nav.spotify },
     { to: "/discord", icon: MessageSquare, label: t.nav.discord },
-    { to: "/analytics", icon: ActivitySquare, label: t.nav.analytics },
+    { to: "/analytics", icon: StickyNote, label: t.nav.analytics },
     { to: "/security", icon: Shield, label: t.nav.security },
-    { to: "/database", icon: Database, label: t.nav.database },
-    { to: "/logs", icon: Terminal, label: t.nav.logs },
+    { to: "/database", icon: Bookmark, label: t.nav.database },
+    { to: "/logs", icon: CheckSquare, label: t.nav.logs },
     { to: "/profile", icon: User, label: t.nav.profile },
     { to: "/settings", icon: Settings, label: t.nav.settings },
   ];
+
+  const avatarUrl = (user as any)?.avatarUrl;
+  const initial = user?.username?.[0]?.toUpperCase();
 
   if (isMobile) {
     return (
@@ -41,40 +44,19 @@ export default function Sidebar() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${
-                  isActive
-                    ? "text-indigo-300"
-                    : "text-gray-500 hover:text-indigo-300"
-                }`
+                `flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${isActive ? "text-indigo-300" : "text-gray-500 hover:text-indigo-300"}`
               }
             >
               <item.icon className="h-5 w-5 shrink-0" />
             </NavLink>
           ))}
-          <NavLink
-            to="/profile"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${
-                isActive ? "text-indigo-300" : "text-gray-500 hover:text-indigo-300"
-              }`
-            }
-          >
+          <NavLink to="/profile" className={({ isActive }) => `flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${isActive ? "text-indigo-300" : "text-gray-500 hover:text-indigo-300"}`}>
             <User className="h-5 w-5 shrink-0" />
           </NavLink>
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${
-                isActive ? "text-indigo-300" : "text-gray-500 hover:text-indigo-300"
-              }`
-            }
-          >
+          <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${isActive ? "text-indigo-300" : "text-gray-500 hover:text-indigo-300"}`}>
             <Settings className="h-5 w-5 shrink-0" />
           </NavLink>
-          <button
-            onClick={handleLogout}
-            className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-gray-500 transition-colors hover:text-red-400"
-          >
+          <button onClick={handleLogout} className="flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-gray-500 transition-colors hover:text-red-400">
             <LogOut className="h-5 w-5 shrink-0" />
           </button>
         </div>
@@ -131,7 +113,7 @@ export default function Sidebar() {
         )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-2">
+      <nav className="flex flex-1 flex-col gap-1.5">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -146,12 +128,28 @@ export default function Sidebar() {
             title={isCollapsed ? item.label : undefined}
           >
             <item.icon className="relative z-10 h-5 w-5 shrink-0" />
-            {!isCollapsed && (
-              <span className="relative z-10 whitespace-nowrap">{item.label}</span>
-            )}
+            {!isCollapsed && <span className="relative z-10 whitespace-nowrap">{item.label}</span>}
           </NavLink>
         ))}
       </nav>
+
+      {!isCollapsed && user && (
+        <div className="mb-2 flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 px-3 py-2">
+          <div className="h-8 w-8 shrink-0 rounded-full overflow-hidden border border-white/10">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                <span className="text-xs font-bold text-white">{initial}</span>
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white truncate">{user.username}</p>
+            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+          </div>
+        </div>
+      )}
 
       <button
         onClick={handleLogout}

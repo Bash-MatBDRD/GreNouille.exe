@@ -22,11 +22,10 @@ router.post("/logout", authenticateToken, (req: any, res) => {
 
 router.get("/me", authenticateToken, (req: any, res) => {
   const stmt = db.prepare(
-    "SELECT id, username, email, discordId, twoFactorEnabled, spotifyAccessToken FROM users WHERE id = ?"
+    "SELECT id, username, email, discordId, twoFactorEnabled, spotifyAccessToken, avatarUrl FROM users WHERE id = ?"
   );
   const user = stmt.get(req.user.id) as any;
   if (!user) return res.status(404).json({ error: "User not found" });
-
   res.json({ user: { ...user, hasSpotify: !!user.spotifyAccessToken } });
 });
 
@@ -72,10 +71,9 @@ router.post("/2fa/disable", authenticateToken, (req: any, res) => {
 
 router.get("/sessions", authenticateToken, (req: any, res) => {
   try {
-    const stmt = db.prepare(
-      "SELECT * FROM sessions WHERE userId = ? ORDER BY lastActive DESC"
-    );
-    const dbSessions = stmt.all(req.user.id);
+    const dbSessions = db.prepare(
+      "SELECT * FROM sessions WHERE userId = ? ORDER BY lastActive DESC LIMIT 10"
+    ).all(req.user.id);
 
     const sessions = dbSessions.map((s: any) => ({
       id: s.id,
@@ -87,7 +85,6 @@ router.get("/sessions", authenticateToken, (req: any, res) => {
 
     res.json({ sessions });
   } catch (error: any) {
-    logSystemEvent("error", `Failed to fetch sessions for ${req.user.username}: ${error.message}`);
     res.status(500).json({ error: "Failed to fetch sessions" });
   }
 });
@@ -95,40 +92,50 @@ router.get("/sessions", authenticateToken, (req: any, res) => {
 router.post("/sessions/:id/revoke", authenticateToken, (req: any, res) => {
   try {
     const sessionId = req.params.id;
-    const stmt = db.prepare("DELETE FROM sessions WHERE id = ? AND userId = ?");
-    const result = stmt.run(sessionId, req.user.id);
-
-    if (result.changes === 0) {
-      return res.status(404).json({ error: "Session not found or unauthorized" });
-    }
-
+    const result = db.prepare("DELETE FROM sessions WHERE id = ? AND userId = ?").run(sessionId, req.user.id);
+    if (result.changes === 0) return res.status(404).json({ error: "Session not found" });
     logSystemEvent("info", `User ${req.user.username} revoked a session`);
-    res.json({ success: true, message: "Session revoked successfully" });
+    res.json({ success: true });
   } catch (error: any) {
-    logSystemEvent("error", `Failed to revoke session for ${req.user.username}: ${error.message}`);
     res.status(500).json({ error: "Failed to revoke session" });
   }
 });
 
 router.patch("/profile", authenticateToken, async (req: any, res) => {
   try {
-    const { username, email } = req.body;
-    if (!username && !email) return res.status(400).json({ error: "Nothing to update" });
+    const { username, email, discordId } = req.body;
+    if (!username && !email && discordId === undefined) return res.status(400).json({ error: "Nothing to update" });
 
     const fields: string[] = [];
     const values: any[] = [];
 
     if (username) { fields.push("username = ?"); values.push(username.trim()); }
     if (email) { fields.push("email = ?"); values.push(email.trim().toLowerCase()); }
+    if (discordId !== undefined) { fields.push("discordId = ?"); values.push(discordId.trim()); }
 
     values.push(req.user.id);
     db.prepare(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`).run(...values);
 
-    const updated = db.prepare("SELECT id, username, email, twoFactorEnabled, spotifyAccessToken FROM users WHERE id = ?").get(req.user.id) as any;
+    const updated = db.prepare("SELECT id, username, email, discordId, twoFactorEnabled, spotifyAccessToken, avatarUrl FROM users WHERE id = ?").get(req.user.id) as any;
     logSystemEvent("info", `User ${req.user.username} updated profile`);
     res.json({ user: { ...updated, hasSpotify: !!updated.spotifyAccessToken } });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+router.patch("/avatar", authenticateToken, async (req: any, res) => {
+  try {
+    const { avatar } = req.body;
+    if (!avatar || typeof avatar !== "string") return res.status(400).json({ error: "Avatar data required" });
+    if (!avatar.startsWith("data:image/")) return res.status(400).json({ error: "Invalid image format" });
+    if (avatar.length > 3 * 1024 * 1024) return res.status(400).json({ error: "Image too large (max 2MB)" });
+
+    db.prepare("UPDATE users SET avatarUrl = ? WHERE id = ?").run(avatar, req.user.id);
+    logSystemEvent("info", `User ${req.user.username} updated avatar`);
+    res.json({ success: true, avatarUrl: avatar });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to update avatar" });
   }
 });
 

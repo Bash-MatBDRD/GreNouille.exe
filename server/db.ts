@@ -26,6 +26,7 @@ db.exec(`
     spotifyAccessToken TEXT,
     spotifyRefreshToken TEXT,
     spotifyTokenExpiry INTEGER,
+    avatarUrl TEXT,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -63,10 +64,14 @@ db.exec(`
   );
 `);
 
-try {
-  db.exec("ALTER TABLE users ADD COLUMN supabase_id TEXT");
-} catch (e) {
-  // Column already exists
+const migrations = [
+  "ALTER TABLE users ADD COLUMN supabase_id TEXT",
+  "ALTER TABLE users ADD COLUMN avatarUrl TEXT",
+  "ALTER TABLE users ADD COLUMN discordId TEXT",
+];
+
+for (const migration of migrations) {
+  try { db.exec(migration); } catch { }
 }
 
 export default db;

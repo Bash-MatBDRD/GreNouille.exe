@@ -8,6 +8,8 @@ type User = {
   username: string;
   email: string;
   hasSpotify: boolean;
+  avatarUrl?: string;
+  discordId?: string;
 };
 
 type AuthContextType = {
@@ -49,6 +51,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const recordSession = async (currentSession: Session | null) => {
+    if (!currentSession?.access_token) return;
+    try {
+      await axios.post("/api/auth/session/record", {}, {
+        headers: getAuthHeaders(currentSession),
+      });
+    } catch {
+      // Session recording is best-effort
+    }
+  };
+
   const checkAuth = async () => {
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     setSession(currentSession);
@@ -72,9 +85,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
       setSession(currentSession);
       fetchProfile(currentSession);
+      if (event === "SIGNED_IN") {
+        recordSession(currentSession);
+      }
     });
 
     return () => subscription.unsubscribe();

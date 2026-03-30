@@ -1,126 +1,194 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "motion/react";
-import { Terminal, AlertCircle, Info, CheckCircle, XCircle } from "lucide-react";
-import axios from "axios";
+import { motion, AnimatePresence } from "motion/react";
+import { CheckSquare, Plus, Trash2, Check, Circle, Flag } from "lucide-react";
 
-export default function SystemLogs() {
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+interface Todo {
+  id: string;
+  text: string;
+  done: boolean;
+  priority: "high" | "medium" | "low";
+  createdAt: string;
+}
 
-  const fetchLogs = async () => {
-    try {
-      const res = await axios.get("/api/logs");
-      setLogs(res.data);
-    } catch (error) {
-      console.error("Failed to fetch logs", error);
-    } finally {
-      setLoading(false);
-    }
+const PRIORITY_CONFIG = {
+  high: { label: "Urgent", color: "text-red-400", border: "border-red-500/30", bg: "bg-red-500/10", dot: "bg-red-400" },
+  medium: { label: "Normal", color: "text-yellow-400", border: "border-yellow-500/30", bg: "bg-yellow-500/10", dot: "bg-yellow-400" },
+  low: { label: "Bas", color: "text-blue-400", border: "border-blue-500/30", bg: "bg-blue-500/10", dot: "bg-blue-400" },
+};
+
+const STORAGE_KEY = "nexus-todos";
+
+function loadTodos(): Todo[] {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
+}
+function saveTodos(todos: Todo[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+}
+
+export default function Todos() {
+  const [todos, setTodos] = useState<Todo[]>(loadTodos);
+  const [text, setText] = useState("");
+  const [priority, setPriority] = useState<Todo["priority"]>("medium");
+  const [filter, setFilter] = useState<"all" | "active" | "done">("all");
+
+  useEffect(() => { saveTodos(todos); }, [todos]);
+
+  const filtered = todos
+    .filter((t) => filter === "all" || (filter === "active" && !t.done) || (filter === "done" && t.done))
+    .sort((a, b) => {
+      const p = { high: 0, medium: 1, low: 2 };
+      if (!a.done && b.done) return -1;
+      if (a.done && !b.done) return 1;
+      if (!a.done && !b.done) return p[a.priority] - p[b.priority];
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    const todo: Todo = {
+      id: crypto.randomUUID(),
+      text: text.trim(),
+      done: false,
+      priority,
+      createdAt: new Date().toISOString(),
+    };
+    setTodos((prev) => [todo, ...prev]);
+    setText("");
   };
 
-  useEffect(() => {
-    fetchLogs();
-    const interval = setInterval(fetchLogs, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const getLogIcon = (type: string) => {
-    switch (type) {
-      case "error": return XCircle;
-      case "warning": return AlertCircle;
-      case "success": return CheckCircle;
-      default: return Info;
-    }
+  const toggleDone = (id: string) => {
+    setTodos((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done } : t));
   };
 
-  const getLogColors = (type: string) => {
-    switch (type) {
-      case "error": return { color: "text-red-400", bg: "bg-red-500/10" };
-      case "warning": return { color: "text-yellow-400", bg: "bg-yellow-500/10" };
-      case "success": return { color: "text-emerald-400", bg: "bg-emerald-500/10" };
-      default: return { color: "text-blue-400", bg: "bg-blue-500/10" };
-    }
+  const handleDelete = (id: string) => {
+    setTodos((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const filteredLogs = logs.filter(log => 
-    log.message.toLowerCase().includes(search.toLowerCase()) || 
-    log.type.toLowerCase().includes(search.toLowerCase())
-  );
+  const clearDone = () => {
+    setTodos((prev) => prev.filter((t) => !t.done));
+  };
+
+  const activeCount = todos.filter((t) => !t.done).length;
+  const doneCount = todos.filter((t) => t.done).length;
 
   return (
     <div className="flex-1 p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">System Logs</h1>
-          <p className="text-gray-400">View detailed system events and application logs</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search logs..."
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-gray-500 outline-none transition-all focus:border-emerald-500 focus:bg-white/10"
-          />
-          <button className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20">
-            Export
-          </button>
-        </div>
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="flex flex-col rounded-2xl border border-white/10 bg-[#0a0a0a] p-6 shadow-inner h-[calc(100vh-200px)]"
-      >
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-gray-800 p-3 text-gray-400">
-              <Terminal className="h-6 w-6" />
-            </div>
-            <h2 className="text-xl font-semibold text-white">Live Feed</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-            </span>
-            <span className="text-sm text-gray-400">Streaming</span>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto rounded-xl border border-white/5 bg-black/60 p-4 font-mono text-sm custom-scrollbar">
-          {loading ? (
-            <div className="flex h-full items-center justify-center text-gray-500">Loading logs...</div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-gray-500">No logs found</div>
-          ) : (
-            <div className="space-y-3">
-              {filteredLogs.map((log, i) => {
-                const Icon = getLogIcon(log.type);
-                const colors = getLogColors(log.type);
-                return (
-                  <motion.div
-                    key={log.id || i}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05, duration: 0.3 }}
-                    className={`flex items-start gap-4 rounded-lg border border-white/5 ${colors.bg} p-3 transition-colors hover:bg-white/5`}
-                  >
-                    <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${colors.color}`} />
-                    <div className="flex-1">
-                      <p className="text-gray-300">{log.message}</p>
-                      <p className="mt-1 text-xs text-gray-500">{new Date(log.createdAt).toLocaleString()}</p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-8">
+        <div className="flex items-center justify-between mb-1">
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <CheckSquare className="h-8 w-8 text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.7)]" />
+            Tâches
+          </h1>
+          {doneCount > 0 && (
+            <button onClick={clearDone} className="text-sm text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1">
+              <Trash2 className="h-4 w-4" /> Supprimer terminées ({doneCount})
+            </button>
           )}
         </div>
+        <p className="text-gray-400">{activeCount} tâche{activeCount !== 1 ? "s" : ""} en attente</p>
       </motion.div>
+
+      <form onSubmit={handleAdd} className="mb-6">
+        <div className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-md focus-within:border-emerald-500/50 focus-within:bg-white/8 transition-all">
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Ajouter une nouvelle tâche..."
+            className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm px-2"
+          />
+          <div className="flex items-center gap-2">
+            {(["high", "medium", "low"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPriority(p)}
+                className={`h-6 w-6 rounded-full transition-all ${PRIORITY_CONFIG[p].dot} ${priority === p ? "scale-125 ring-2 ring-white/40" : "opacity-40 hover:opacity-70"}`}
+                title={PRIORITY_CONFIG[p].label}
+              />
+            ))}
+            <button
+              type="submit"
+              disabled={!text.trim()}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div className="flex items-center gap-2 mb-6">
+        {(["all", "active", "done"] as const).map((f) => {
+          const labels = { all: "Toutes", active: "À faire", done: "Terminées" };
+          return (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${filter === f ? "bg-emerald-600 border-emerald-500 text-white" : "border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"}`}
+            >
+              {labels[f]}
+            </button>
+          );
+        })}
+      </div>
+
+      <AnimatePresence mode="popLayout">
+        {filtered.length === 0 ? (
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center py-20 text-center"
+          >
+            <CheckSquare className="h-14 w-14 text-gray-700 mb-3" />
+            <p className="text-lg font-semibold text-gray-500">
+              {filter === "done" ? "Aucune tâche terminée" : filter === "active" ? "Tout est fait !" : "Aucune tâche"}
+            </p>
+          </motion.div>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map((todo, i) => {
+              const pc = PRIORITY_CONFIG[todo.priority];
+              return (
+                <motion.div
+                  key={todo.id}
+                  layout
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ delay: i * 0.03 }}
+                  className={`group flex items-center gap-4 rounded-xl border p-4 transition-all ${todo.done ? "border-white/5 bg-white/2 opacity-60" : `${pc.border} ${pc.bg}`}`}
+                >
+                  <button onClick={() => toggleDone(todo.id)} className="shrink-0 transition-transform hover:scale-110">
+                    {todo.done ? (
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.5)]">
+                        <Check className="h-3.5 w-3.5 text-white" />
+                      </div>
+                    ) : (
+                      <Circle className={`h-6 w-6 ${pc.color}`} />
+                    )}
+                  </button>
+                  <span className={`flex-1 text-sm font-medium ${todo.done ? "line-through text-gray-500" : "text-white"}`}>{todo.text}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`hidden md:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border ${pc.border} ${pc.color}`}>
+                      <Flag className="h-3 w-3" />{pc.label}
+                    </span>
+                    <button
+                      onClick={() => handleDelete(todo.id)}
+                      className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
