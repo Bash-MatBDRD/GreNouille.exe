@@ -152,6 +152,8 @@ export default function Discord() {
   const [warningUserId, setWarningUserId] = useState("");
   const [warningUsername, setWarningUsername] = useState("");
 
+  const [expandedCmd, setExpandedCmd] = useState<{ name: string; desc: string; color: string; bg: string; border: string; label: string } | null>(null);
+
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 4000);
@@ -789,6 +791,7 @@ export default function Discord() {
                   Ces commandes s'utilisent directement dans Discord avec <code className="text-[#5865F2]">/</code>.
                   Tu peux aussi mentionner <code className="text-[#5865F2]">@GreNouille.exe</code> pour un accès rapide.
                   Les commandes Owner (👑) sont réservées à l'ID <code className="text-amber-400">785872940347949056</code>.
+                  <span className="ml-1 text-gray-500">· Clique sur une commande pour voir ses détails.</span>
                 </p>
               </div>
             </div>
@@ -814,10 +817,14 @@ export default function Discord() {
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {cat.commands.map((cmd) => (
-                      <div key={cmd.name} className="flex flex-col gap-0.5 rounded-xl bg-black/30 px-3 py-2.5 border border-white/5">
+                      <button
+                        key={cmd.name}
+                        onClick={() => setExpandedCmd({ ...cmd, color: cat.color, bg: cat.bg, border: cat.border, label: cat.label })}
+                        className="flex flex-col gap-0.5 rounded-xl bg-black/30 px-3 py-2.5 border border-white/5 text-left hover:bg-black/50 hover:border-white/20 hover:scale-[1.02] transition-all cursor-pointer"
+                      >
                         <code className={`text-sm font-bold ${cat.color}`}>{cmd.name}</code>
                         <span className="text-xs text-gray-400 leading-tight">{cmd.desc}</span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </motion.div>
@@ -836,6 +843,45 @@ export default function Discord() {
           </motion.div>
         </div>
       )}
+
+      {/* ── Command detail overlay ─────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {expandedCmd && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6"
+            onClick={() => setExpandedCmd(null)}
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0, y: 30 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`relative w-full max-w-lg rounded-3xl border ${expandedCmd.border} ${expandedCmd.bg} p-8 shadow-2xl backdrop-blur-xl`}
+            >
+              <button
+                onClick={() => setExpandedCmd(null)}
+                className="absolute top-5 right-5 rounded-full bg-white/10 p-2 text-gray-400 hover:bg-white/20 hover:text-white transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <p className={`mb-2 text-xs font-semibold uppercase tracking-widest ${expandedCmd.color} opacity-70`}>{expandedCmd.label}</p>
+              <h2 className={`mb-4 text-4xl font-black ${expandedCmd.color}`}>
+                <code>{expandedCmd.name}</code>
+              </h2>
+              <p className="text-lg text-gray-200 leading-relaxed">{expandedCmd.desc}</p>
+              <p className="mt-6 text-xs text-gray-500">
+                Utilise cette commande dans Discord avec le préfixe <code className="text-[#5865F2]">/</code>.
+                Clique en dehors pour fermer.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

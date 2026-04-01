@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import db from "../db.js";
 import { logSystemEvent } from "./logs.js";
 import { v4 as uuidv4 } from "uuid";
+import { supabaseAdmin } from "../lib/supabaseAdmin.js";
 
 export { authenticateToken } from "../middleware/auth.js";
 import { authenticateToken } from "../middleware/auth.js";
@@ -47,9 +48,14 @@ router.post("/session/record", authenticateToken, (req: any, res) => {
   }
 });
 
-router.post("/2fa/setup", authenticateToken, (req: any, res) => {
+router.post("/2fa/setup", authenticateToken, async (req: any, res) => {
   try {
     db.prepare("UPDATE users SET twoFactorEnabled = 1 WHERE id = ?").run(req.user.id);
+    if (req.user.supabaseId) {
+      await supabaseAdmin.auth.admin.updateUserById(req.user.supabaseId, {
+        user_metadata: { twoFactorEnabled: true },
+      });
+    }
     logSystemEvent("success", `User ${req.user.username} enabled Email 2FA`);
     res.json({ success: true, message: "2FA enabled successfully" });
   } catch (error: any) {
@@ -58,9 +64,14 @@ router.post("/2fa/setup", authenticateToken, (req: any, res) => {
   }
 });
 
-router.post("/2fa/disable", authenticateToken, (req: any, res) => {
+router.post("/2fa/disable", authenticateToken, async (req: any, res) => {
   try {
     db.prepare("UPDATE users SET twoFactorEnabled = 0 WHERE id = ?").run(req.user.id);
+    if (req.user.supabaseId) {
+      await supabaseAdmin.auth.admin.updateUserById(req.user.supabaseId, {
+        user_metadata: { twoFactorEnabled: false },
+      });
+    }
     logSystemEvent("info", `User ${req.user.username} disabled Email 2FA`);
     res.json({ success: true, message: "2FA disabled successfully" });
   } catch (error: any) {
@@ -116,6 +127,12 @@ router.patch("/profile", authenticateToken, async (req: any, res) => {
     values.push(req.user.id);
     db.prepare(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`).run(...values);
 
+    if (discordId !== undefined && req.user.supabaseId) {
+      await supabaseAdmin.auth.admin.updateUserById(req.user.supabaseId, {
+        user_metadata: { discordId: discordId.trim() },
+      });
+    }
+
     const updated = db.prepare("SELECT id, username, email, discordId, twoFactorEnabled, spotifyAccessToken, avatarUrl FROM users WHERE id = ?").get(req.user.id) as any;
     logSystemEvent("info", `User ${req.user.username} updated profile`);
     res.json({ user: { ...updated, hasSpotify: !!updated.spotifyAccessToken } });
@@ -132,6 +149,17 @@ router.patch("/avatar", authenticateToken, async (req: any, res) => {
     if (avatar.length > 3 * 1024 * 1024) return res.status(400).json({ error: "Image too large (max 2MB)" });
 
     db.prepare("UPDATE users SET avatarUrl = ? WHERE id = ?").run(avatar, req.user.id);
+
+    if (req.user.supabaseId) {
+      try {
+        await supabaseAdmin.auth.admin.updateUserById(req.user.supabaseId, {
+          user_metadata: { avatarUrl: avatar },
+        });
+      } catch {
+        // Non-blocking: avatar is already saved in SQLite
+      }
+    }
+
     logSystemEvent("info", `User ${req.user.username} updated avatar`);
     res.json({ success: true, avatarUrl: avatar });
   } catch (error: any) {
