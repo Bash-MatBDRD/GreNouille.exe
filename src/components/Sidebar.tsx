@@ -1,10 +1,81 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Music, MessageSquare, LogOut, Settings, User, StickyNote, ChevronLeft, ChevronRight, Shield, Bookmark, CheckSquare, Lock, Bot } from "lucide-react";
+import { LayoutDashboard, Music, MessageSquare, LogOut, Settings, User, StickyNote, ChevronLeft, ChevronRight, Shield, Bookmark, CheckSquare, Lock, Bot, Check } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import MobileNav from "./MobileNav";
+
+const LOGO_COLOR_KEY = "nexus-logo-color";
+
+const logoColors = [
+  { id: "indigo", label: "Indigo", bg: "rgba(79,110,247,0.22)", border: "rgba(79,110,247,0.4)", glow: "rgba(79,110,247,0.5)", text: "rgba(100,130,255,0.9)" },
+  { id: "violet", label: "Violet", bg: "rgba(139,92,246,0.22)", border: "rgba(139,92,246,0.4)", glow: "rgba(139,92,246,0.5)", text: "rgba(167,139,250,0.9)" },
+  { id: "cyan", label: "Cyan", bg: "rgba(34,211,238,0.18)", border: "rgba(34,211,238,0.4)", glow: "rgba(34,211,238,0.5)", text: "rgba(34,211,238,0.9)" },
+  { id: "emerald", label: "Emerald", bg: "rgba(16,185,129,0.18)", border: "rgba(16,185,129,0.4)", glow: "rgba(16,185,129,0.5)", text: "rgba(16,185,129,0.9)" },
+  { id: "rose", label: "Rose", bg: "rgba(244,63,94,0.18)", border: "rgba(244,63,94,0.4)", glow: "rgba(244,63,94,0.5)", text: "rgba(244,63,94,0.9)" },
+  { id: "amber", label: "Ambre", bg: "rgba(245,158,11,0.18)", border: "rgba(245,158,11,0.4)", glow: "rgba(245,158,11,0.5)", text: "rgba(245,158,11,0.9)" },
+  { id: "white", label: "Blanc", bg: "rgba(255,255,255,0.1)", border: "rgba(255,255,255,0.3)", glow: "rgba(255,255,255,0.4)", text: "rgba(255,255,255,0.9)" },
+];
+
+function LogoColorPicker({ onClose }: { onClose: () => void }) {
+  const [selected, setSelected] = useState(() => localStorage.getItem(LOGO_COLOR_KEY) || "indigo");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    setTimeout(() => document.addEventListener("mousedown", handler), 0);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  const pick = (id: string) => {
+    setSelected(id);
+    localStorage.setItem(LOGO_COLOR_KEY, id);
+    window.dispatchEvent(new Event("nexus-logo-color-change"));
+  };
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, scale: 0.9, x: -8 }}
+      animate={{ opacity: 1, scale: 1, x: 0 }}
+      exit={{ opacity: 0, scale: 0.9, x: -8 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
+      className="absolute left-14 top-0 z-[100] rounded-2xl border border-white/10 p-3 shadow-2xl"
+      style={{ background: "rgba(5,5,20,0.98)", backdropFilter: "blur(20px)", minWidth: 160 }}
+    >
+      <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-2.5 px-1">Couleur du logo</p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {logoColors.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => pick(c.id)}
+            title={c.label}
+            className="relative w-8 h-8 rounded-lg flex items-center justify-center transition-transform hover:scale-110"
+            style={{ background: c.bg, border: `1px solid ${c.border}`, boxShadow: selected === c.id ? `0 0 10px ${c.glow}` : "none" }}
+          >
+            {selected === c.id && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
+          </button>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+export function useLogoColor() {
+  const [colorId, setColorId] = useState(() => localStorage.getItem(LOGO_COLOR_KEY) || "indigo");
+
+  useEffect(() => {
+    const handler = () => setColorId(localStorage.getItem(LOGO_COLOR_KEY) || "indigo");
+    window.addEventListener("nexus-logo-color-change", handler);
+    return () => window.removeEventListener("nexus-logo-color-change", handler);
+  }, []);
+
+  return logoColors.find((c) => c.id === colorId) || logoColors[0];
+}
 
 export default function Sidebar() {
   const { signOut, lock, user } = useAuth();
@@ -12,7 +83,9 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const isMobile = useIsMobile();
+  const logoColor = useLogoColor();
 
   const isCollapsed = !isPinned && !isHovered;
 
@@ -56,25 +129,32 @@ export default function Sidebar() {
       </button>
 
       <div className={`mb-12 flex items-center ${isCollapsed ? "justify-center" : "gap-3"} px-2 mt-4`}>
-        <div
-          className="flex shrink-0 h-8 w-8 items-center justify-center rounded-lg"
-          style={{
-            background: "linear-gradient(145deg, rgba(79,110,247,0.22) 0%, rgba(124,58,237,0.14) 100%)",
-            border: "1px solid rgba(255,255,255,0.13)",
-            boxShadow: "0 0 0 1px rgba(79,110,247,0.15), 0 0 14px rgba(79,110,247,0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
-          }}
-        >
-          <span
-            className="text-sm font-black select-none leading-none"
+        <div className="relative">
+          <AnimatePresence>
+            {showColorPicker && <LogoColorPicker onClose={() => setShowColorPicker(false)} />}
+          </AnimatePresence>
+          <button
+            onClick={() => setShowColorPicker(!showColorPicker)}
+            title="Changer la couleur du logo"
+            className="flex shrink-0 h-8 w-8 items-center justify-center rounded-lg transition-transform hover:scale-110 active:scale-95"
             style={{
-              color: "#ffffff",
-              textShadow: "0 0 10px rgba(100,130,255,0.9), 0 0 20px rgba(79,110,247,0.5)",
-              letterSpacing: "-0.04em",
-              fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+              background: `linear-gradient(145deg, ${logoColor.bg} 0%, rgba(0,0,0,0.1) 100%)`,
+              border: `1px solid ${logoColor.border}`,
+              boxShadow: `0 0 0 1px ${logoColor.bg}, 0 0 14px ${logoColor.glow}40, inset 0 1px 0 rgba(255,255,255,0.15)`,
             }}
           >
-            N
-          </span>
+            <span
+              className="text-sm font-black select-none leading-none"
+              style={{
+                color: "#ffffff",
+                textShadow: `0 0 10px ${logoColor.text}, 0 0 20px ${logoColor.glow}`,
+                letterSpacing: "-0.04em",
+                fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+              }}
+            >
+              N
+            </span>
+          </button>
         </div>
         {!isCollapsed && (
           <h1

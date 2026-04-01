@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Settings as SettingsIcon, Bell, Lock, Palette, Trash2, Check, Sparkles } from "lucide-react";
-import { type SplashTheme, SPLASH_KEY } from "../components/Splashscreen";
+import { type SplashTheme, SPLASH_KEY, SPLASH_ENABLED_KEY } from "../components/Splashscreen";
 
 const SETTINGS_KEY = "nexus-settings";
 
@@ -141,6 +141,9 @@ export default function Settings() {
   const [splashTheme, setSplashTheme] = useState<SplashTheme>(
     () => (localStorage.getItem(SPLASH_KEY) as SplashTheme) || "nexus"
   );
+  const [splashEnabled, setSplashEnabled] = useState<boolean>(
+    () => localStorage.getItem(SPLASH_ENABLED_KEY) !== "false"
+  );
 
   const update = (key: keyof NexusSettings, value: any) => {
     const next = { ...settings, [key]: value };
@@ -153,6 +156,13 @@ export default function Settings() {
   const updateSplash = (theme: SplashTheme) => {
     setSplashTheme(theme);
     localStorage.setItem(SPLASH_KEY, theme);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const updateSplashEnabled = (enabled: boolean) => {
+    setSplashEnabled(enabled);
+    localStorage.setItem(SPLASH_ENABLED_KEY, enabled ? "true" : "false");
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -198,8 +208,14 @@ export default function Settings() {
             <Sparkles className="h-6 w-6 text-violet-400 drop-shadow-[0_0_8px_currentColor]" />
             <h2 className="text-xl font-bold text-white">Animation de démarrage</h2>
           </div>
-          <p className="text-sm text-gray-500 mb-5">Choisissez le style d'animation qui s'affiche au lancement de Nexus Panel.</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-gray-300 font-medium">Afficher l'animation de démarrage</p>
+              <p className="text-sm text-gray-500 mt-0.5">Si désactivée, l'application s'ouvre directement.</p>
+            </div>
+            <Toggle value={splashEnabled} onChange={updateSplashEnabled} />
+          </div>
+          <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 transition-opacity duration-200 ${!splashEnabled ? "opacity-40 pointer-events-none" : ""}`}>
             {splashOptions.map((opt) => (
               <button
                 key={opt.id}
