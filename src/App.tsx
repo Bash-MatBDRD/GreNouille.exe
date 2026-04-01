@@ -175,13 +175,13 @@ function AppContent() {
 export default function App() {
   return (
     <LanguageProvider>
-      <AuthProvider>
-        <SpotifyProvider>
-          <Router>
+      <Router>
+        <AuthProvider>
+          <SpotifyProvider>
             <AppContent />
-          </Router>
-        </SpotifyProvider>
-      </AuthProvider>
+          </SpotifyProvider>
+        </AuthProvider>
+      </Router>
     </LanguageProvider>
   );
 }

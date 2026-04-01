@@ -24,6 +24,14 @@ async function startServer() {
   app.use(express.urlencoded({ extended: true, limit: "15mb" }));
   app.use(cookieParser());
 
+  // Expose safe public config to the frontend (never expose server secrets here)
+  app.get("/api/config", (_req, res) => {
+    res.json({
+      supabaseUrl: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "",
+      supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY || "",
+    });
+  });
+
   // API Routes
   app.use("/api/auth", authRoutes);
   app.use("/api/spotify", spotifyRoutes);
