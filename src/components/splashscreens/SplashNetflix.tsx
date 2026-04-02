@@ -1,55 +1,17 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
-const STREAK_COUNT = 60;
-
-function randomBetween(a: number, b: number) {
-  return a + Math.random() * (b - a);
-}
-
-interface Streak {
-  x: number;
-  color: string;
-  width: number;
-  delay: number;
-  duration: number;
-  height: number;
-  opacity: number;
-}
-
-const COLORS = [
-  "#E50914", "#ff2200", "#ff6600", "#ff9900",
-  "#cc0000", "#990000", "#ff4444", "#ff0033",
-  "#ff3300", "#cc3300",
-];
-
-function generateStreaks(): Streak[] {
-  return Array.from({ length: STREAK_COUNT }, (_, i) => ({
-    x: (i / STREAK_COUNT) * 100,
-    color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    width: randomBetween(1, 4),
-    delay: randomBetween(0, 0.6),
-    duration: randomBetween(0.4, 0.9),
-    height: randomBetween(40, 100),
-    opacity: randomBetween(0.4, 1),
-  }));
-}
-
 export default function SplashNetflix({ visible }: { visible: boolean }) {
-  const [phase, setPhase] = useState<"streaks" | "logo" | "done">("streaks");
-  const [streaks] = useState<Streak[]>(() => generateStreaks());
+  const [phase, setPhase] = useState<"dark" | "beams" | "flash" | "logo">("dark");
   const hasRun = useRef(false);
 
   useEffect(() => {
     if (!visible || hasRun.current) return;
     hasRun.current = true;
-
-    const t1 = setTimeout(() => setPhase("logo"), 900);
-    const t2 = setTimeout(() => setPhase("done"), 2800);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    const t1 = setTimeout(() => setPhase("beams"), 200);
+    const t2 = setTimeout(() => setPhase("flash"), 900);
+    const t3 = setTimeout(() => setPhase("logo"), 1100);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [visible]);
 
   return (
@@ -58,189 +20,154 @@ export default function SplashNetflix({ visible }: { visible: boolean }) {
         <motion.div
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.6 }}
           className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black"
         >
-          {/* Phase 1 — vertical light streaks */}
+          {/* Phase beams — converging vertical light columns */}
           <AnimatePresence>
-            {phase === "streaks" && (
+            {(phase === "beams" || phase === "flash") && (
               <motion.div
-                key="streaks"
-                initial={{ opacity: 1 }}
+                key="beams"
+                className="absolute inset-0 flex items-center justify-center"
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.35 }}
-                className="absolute inset-0"
+                transition={{ duration: 0.15 }}
               >
-                {streaks.map((s, i) => (
+                {[
+                  { from: "0%", to: "44%", delay: 0, w: 3 },
+                  { from: "100%", to: "56%", delay: 0.05, w: 3 },
+                  { from: "15%", to: "44%", delay: 0.1, w: 2 },
+                  { from: "85%", to: "56%", delay: 0.1, w: 2 },
+                  { from: "30%", to: "45%", delay: 0.15, w: 1.5 },
+                  { from: "70%", to: "55%", delay: 0.15, w: 1.5 },
+                ].map((b, i) => (
                   <motion.div
                     key={i}
-                    initial={{ scaleY: 0, opacity: 0 }}
-                    animate={{ scaleY: 1, opacity: s.opacity }}
-                    transition={{
-                      delay: s.delay,
-                      duration: s.duration,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    style={{
-                      position: "absolute",
-                      left: `${s.x}%`,
-                      top: 0,
-                      bottom: 0,
-                      width: s.width,
-                      background: `linear-gradient(to bottom, transparent 0%, ${s.color} 20%, ${s.color} 80%, transparent 100%)`,
-                      filter: `blur(${s.width > 2.5 ? 1.5 : 0.5}px)`,
-                      transformOrigin: "top",
-                      boxShadow: `0 0 ${s.width * 4}px ${s.color}`,
-                    }}
+                    className="absolute top-0 bottom-0"
+                    style={{ width: b.w, background: `linear-gradient(to bottom, transparent 0%, #E50914 30%, #ff2200 70%, transparent 100%)`, filter: "blur(1px)", boxShadow: `0 0 8px #E50914` }}
+                    initial={{ left: b.from, opacity: 0 }}
+                    animate={{ left: b.to, opacity: [0, 1, 1] }}
+                    transition={{ delay: b.delay, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                   />
                 ))}
 
-                {/* Center flash */}
+                {/* Central growing glow */}
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 0.18, 0] }}
-                  transition={{ delay: 0.7, duration: 0.4 }}
-                  className="absolute inset-0"
-                  style={{
-                    background: "radial-gradient(ellipse 60% 80% at 50% 50%, rgba(229,9,20,0.35) 0%, transparent 70%)",
-                  }}
+                  className="absolute rounded-full"
+                  style={{ width: 200, height: 400, background: "radial-gradient(ellipse, rgba(229,9,20,0.25) 0%, transparent 70%)", filter: "blur(20px)" }}
+                  initial={{ scaleX: 0, opacity: 0 }}
+                  animate={{ scaleX: 1, opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.5 }}
                 />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Phase 2 — N logo */}
+          {/* Flash */}
           <AnimatePresence>
-            {(phase === "logo" || phase === "done") && (
+            {phase === "flash" && (
+              <motion.div
+                key="flash"
+                className="absolute inset-0"
+                style={{ background: "radial-gradient(ellipse 40% 60% at 50% 50%, rgba(229,9,20,0.9) 0%, rgba(229,9,20,0.3) 40%, transparent 70%)" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{ duration: 0.25 }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Logo phase */}
+          <AnimatePresence>
+            {phase === "logo" && (
               <motion.div
                 key="logo"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className="relative flex items-center justify-center"
+                className="relative flex flex-col items-center gap-5"
               >
-                {/* Outer glow */}
+                {/* Outer glow halo */}
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: [0, 0.7, 0.4], scale: [0.6, 1.8, 1.3] }}
-                  transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                   className="absolute rounded-full pointer-events-none"
-                  style={{
-                    width: 280,
-                    height: 280,
-                    background: "radial-gradient(circle, rgba(229,9,20,0.6) 0%, transparent 65%)",
-                    filter: "blur(28px)",
-                  }}
+                  style={{ width: 320, height: 320, background: "radial-gradient(circle, rgba(229,9,20,0.45) 0%, transparent 65%)", filter: "blur(40px)" }}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: [0, 0.9, 0.5], scale: [0.5, 1.4, 1] }}
+                  transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                 />
 
-                {/* N SVG with vertical streak effect */}
+                {/* N logo */}
                 <motion.div
                   initial={{ scaleY: 0, opacity: 0 }}
                   animate={{ scaleY: 1, opacity: 1 }}
-                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ originY: "50%" }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ originY: "center" }}
                 >
-                  <svg
-                    width="130"
-                    height="175"
-                    viewBox="0 0 130 175"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
+                  <svg width="110" height="148" viewBox="0 0 110 148" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
-                      <linearGradient id="nBase" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#ff1a1a" />
+                      <linearGradient id="nfxBase" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ff2a2a" />
                         <stop offset="50%" stopColor="#E50914" />
-                        <stop offset="100%" stopColor="#8b0000" />
+                        <stop offset="100%" stopColor="#7a0007" />
                       </linearGradient>
-                      <linearGradient id="nShine" x1="0" y1="0" x2="1" y2="0">
+                      <linearGradient id="nfxShine" x1="0" y1="0" x2="1" y2="0">
                         <stop offset="0%" stopColor="rgba(255,255,255,0)" />
-                        <stop offset="40%" stopColor="rgba(255,255,255,0.18)" />
-                        <stop offset="55%" stopColor="rgba(255,255,255,0.38)" />
+                        <stop offset="45%" stopColor="rgba(255,255,255,0.2)" />
+                        <stop offset="55%" stopColor="rgba(255,255,255,0.35)" />
                         <stop offset="100%" stopColor="rgba(255,255,255,0)" />
                       </linearGradient>
-                      <filter id="streakGlow" x="-30%" y="-10%" width="160%" height="120%">
-                        <feGaussianBlur stdDeviation="2.5" result="blur" />
-                        <feMerge>
-                          <feMergeNode in="blur" />
-                          <feMergeNode in="SourceGraphic" />
-                        </feMerge>
+                      <filter id="nfxGlow">
+                        <feGaussianBlur stdDeviation="2" result="blur" />
+                        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
                       </filter>
-                      <clipPath id="nClip">
-                        <polygon points="4,0 32,0 65,90 98,0 126,0 126,175 98,175 98,85 65,175 32,85 32,175 4,175" />
-                      </clipPath>
                     </defs>
-
-                    {/* Main N shape */}
                     <polygon
-                      points="4,0 32,0 65,90 98,0 126,0 126,175 98,175 98,85 65,175 32,85 32,175 4,175"
-                      fill="url(#nBase)"
-                      filter="url(#streakGlow)"
+                      points="3,0 28,0 55,78 82,0 107,0 107,148 82,148 82,70 55,148 28,70 28,148 3,148"
+                      fill="url(#nfxBase)"
+                      filter="url(#nfxGlow)"
                     />
-
-                    {/* Vertical light streaks inside the N (clipped) */}
-                    {[10, 20, 30, 42, 55, 68, 80, 90, 100, 112, 120].map((xPos, idx) => (
-                      <rect
-                        key={idx}
-                        x={xPos}
-                        y={0}
-                        width={idx % 3 === 0 ? 2.5 : 1}
-                        height={175}
-                        fill={`rgba(255,${80 + idx * 10},${idx * 8},${0.15 + (idx % 2) * 0.12})`}
-                        clipPath="url(#nClip)"
-                      />
-                    ))}
-
-                    {/* Shine overlay */}
                     <polygon
-                      points="4,0 32,0 65,90 98,0 126,0 126,175 98,175 98,85 65,175 32,85 32,175 4,175"
-                      fill="url(#nShine)"
+                      points="3,0 28,0 55,78 82,0 107,0 107,148 82,148 82,70 55,148 28,70 28,148 3,148"
+                      fill="url(#nfxShine)"
                     />
                   </svg>
                 </motion.div>
 
-                {/* Horizontal shine sweep */}
+                {/* Shine sweep */}
                 <motion.div
-                  initial={{ x: -180, opacity: 0 }}
-                  animate={{ x: 180, opacity: [0, 0.8, 0] }}
-                  transition={{ delay: 0.3, duration: 0.5, ease: "easeInOut" }}
                   className="absolute pointer-events-none"
-                  style={{
-                    top: 0,
-                    bottom: 0,
-                    width: 60,
-                    background: "linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.45) 50%, transparent 80%)",
-                  }}
+                  style={{ top: 0, bottom: 0, width: 50, background: "linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.55) 50%, transparent 80%)" }}
+                  initial={{ x: -150, opacity: 0 }}
+                  animate={{ x: 150, opacity: [0, 1, 0] }}
+                  transition={{ delay: 0.25, duration: 0.45, ease: "easeInOut" }}
                 />
 
-                {/* Bottom light leak */}
+                {/* Bottom light pool */}
                 <motion.div
-                  initial={{ opacity: 0, scaleX: 0 }}
-                  animate={{ opacity: [0, 0.6, 0], scaleX: 1 }}
-                  transition={{ delay: 0.2, duration: 0.6 }}
                   className="absolute pointer-events-none"
-                  style={{
-                    bottom: -10,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: 160,
-                    height: 20,
-                    background: "radial-gradient(ellipse, rgba(229,9,20,0.9) 0%, transparent 70%)",
-                    filter: "blur(6px)",
-                  }}
+                  style={{ bottom: -16, left: "50%", transform: "translateX(-50%)", width: 140, height: 18, background: "radial-gradient(ellipse, rgba(229,9,20,1) 0%, transparent 70%)", filter: "blur(8px)" }}
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: [0, 0.7, 0], scaleX: 1 }}
+                  transition={{ delay: 0.1, duration: 0.7 }}
                 />
+
+                {/* NEXUS label */}
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35, duration: 0.4 }}
+                  className="text-xs tracking-[0.55em] uppercase font-medium"
+                  style={{ color: "rgba(255,80,80,0.8)", letterSpacing: "0.55em" }}
+                >
+                  NEXUS
+                </motion.p>
               </motion.div>
             )}
           </AnimatePresence>
 
           {/* Vignette */}
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background: "radial-gradient(ellipse 75% 75% at 50% 50%, transparent 35%, rgba(0,0,0,0.75) 100%)",
-            }}
-          />
+          <div className="pointer-events-none absolute inset-0" style={{
+            background: "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 30%, rgba(0,0,0,0.85) 100%)",
+          }} />
         </motion.div>
       )}
     </AnimatePresence>
