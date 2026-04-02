@@ -66,30 +66,20 @@ Both Supabase clients are lazily initialized — the app starts without them, bu
 - **Settings page** simplified: Removed animation/appearance sections (now in Themes). Added a link to the Themes page.
 
 ## Version 1.3.0 Changes
-- **15 splash screen rewrites** (all except TikTok, Gold, Minimal):
-  - SplashNexus: Canvas particle grid + animated progress shimmer bar
-  - SplashMatrix: Full canvas matrix rain + terminal boot log
-  - SplashCyberpunk: Dual-phase glitch with neon corner brackets + RGB split N
-  - SplashNetflix: Beam convergence + SVG N logo + shine sweep
-  - SplashiOS: iOS-style springy app icon with SF Pro typeface feel
-  - SplashWindows: Windows 11 colored tiles + 5-dot loader
-  - SplashApple: Path-drawn N + Apple progress bar
-  - SplashHUD: Enhanced radar (3 blips, sweep gradient) + 8-line boot log
-  - SplashGlitch: Noise texture + intense RGB split → clean settle
-  - SplashAurora: 6 dynamic orbs + aurora band + 55-star field
-  - SplashRetro: 9-step CRT boot with vignette
-  - SplashVaporwave: Denser star field, 7-stripe sun, larger perspective grid
-  - SplashFire: Canvas cellular automaton fire + 28 particle embers
-  - SplashIce: 9 ice crystal shards + 38 frost particles + glowing N logo
-  - SplashNeon: Letter-by-letter reveal + border flicker + floor reflection
-- **New Sidebar** (`src/components/Sidebar.tsx`):
-  - Active nav item color now follows `logoColor` (no more hardcoded indigo)
-  - `motion.div` animated width transition (no CSS transition hack)
-  - Smooth active indicator using `layoutId` for background + dot
-  - Section groupings: Principal / Outils / Compte with label/divider
-  - Tooltips on collapsed state for ALL items including Lock/Logout
-  - Pin/PinOff icons, `motion.button` pin toggle with opacity animation
-  - User avatar border follows logoColor
+- **Splash screen reworks:**
+  - SplashNetflix: Full cinematic rework — scan line, proper SVG N (left/right pillars + diagonal crossbar), shine sweep, ground shadow, letterbox bars
+  - SplashApple: Fixed N path (was drawing M shape) — now uses three separate SVG lines with animated pathLength for a clean Apple-style N
+  - SplashFire: Enhanced fire — bigger canvas (340×220), screen blend mode, upper ambient glow, smoke wisps at top, 40 embers with correct colors, delayed text reveal
+- **15 splash screen rewrites** (pre-existing):
+  - SplashNexus, SplashMatrix, SplashCyberpunk, SplashiOS, SplashWindows, SplashHUD, SplashGlitch, SplashAurora, SplashRetro, SplashVaporwave, SplashIce, SplashNeon
+- **Sidebar fixes & new categories** (`src/components/Sidebar.tsx`):
+  - Fixed text cut-off bug: NexusHub now renders as a fixed-position overlay (no longer clipped by sidebar overflow-hidden); logo header has own overflow-hidden to clip NEXUS text during width animation
+  - New 5-group nav structure: Accueil (Dashboard, AI, Widgets) / Médias & Social (Spotify, Discord) / Personnel (Notes, Tâches, Favoris) / Système (Security) / Compte (Themes, Profile, Settings)
+  - Spotify nav icon changed to Headphones for better semantics
+- **Widgets page rework** (`src/pages/Widgets.tsx`):
+  - 5 new widgets: Pomodoro (25/5 min timer with circular progress, session counter), Objectifs (mini checklist with localStorage persistence), Batterie (ring gauge with charge status, uses Battery API), Météo (enhanced with wind + humidity tiles), Compte à rebours (countdown to user-set date)
+  - Total: 10 widgets (was 5)
+  - Visual improvements: per-color icon tinting, corner glow effect, AnimatePresence exit animations
 - **Discord gateway fixes** (`server/discord-gateway.ts`):
   - Removed duplicate `nick` slash command definition
   - Removed invalid `client.on("disconnect")` event (not valid in discord.js v14)

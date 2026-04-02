@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type RefObject } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Music, MessageSquare, LogOut, Settings, User, StickyNote,
-  ChevronLeft, ChevronRight, Shield, Bookmark, CheckSquare, Lock, Bot, Check,
+  Shield, Bookmark, CheckSquare, Lock, Bot, Check,
   Wifi, WifiOff, Globe, Palette, Zap, X, LayoutGrid, Paintbrush, Pin, PinOff,
+  Headphones,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../context/AuthContext";
@@ -85,7 +86,12 @@ const SHAPE_OPTIONS: { id: LogoStyle["shape"]; label: string }[] = [
   { id: "circle",  label: "Cercle"  },
 ];
 
-function NexusHub({ onClose, logoColor, logoStyle }: { onClose: () => void; logoColor: LogoColor; logoStyle: LogoStyle }) {
+function NexusHub({ onClose, logoColor, logoStyle, anchorRef }: {
+  onClose: () => void;
+  logoColor: LogoColor;
+  logoStyle: LogoStyle;
+  anchorRef: RefObject<HTMLButtonElement | null>;
+}) {
   const { user, lock, signOut } = useAuth();
   const { t, lang, toggle } = useLanguage();
   const navigate = useNavigate();
@@ -97,11 +103,14 @@ function NexusHub({ onClose, logoColor, logoStyle }: { onClose: () => void; logo
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      if (
+        ref.current && !ref.current.contains(e.target as Node) &&
+        anchorRef.current && !anchorRef.current.contains(e.target as Node)
+      ) onClose();
     };
     setTimeout(() => document.addEventListener("mousedown", h), 50);
     return () => document.removeEventListener("mousedown", h);
-  }, [onClose]);
+  }, [onClose, anchorRef]);
 
   const pickColor = (id: string) => {
     setSelectedColor(id);
@@ -132,17 +141,27 @@ function NexusHub({ onClose, logoColor, logoStyle }: { onClose: () => void; logo
   ];
 
   return (
-    <motion.div ref={ref}
+    <motion.div
+      ref={ref}
       initial={{ opacity: 0, scale: 0.92, x: -8 }}
       animate={{ opacity: 1, scale: 1, x: 0 }}
       exit={{ opacity: 0, scale: 0.9, x: -8 }}
       transition={{ duration: 0.16, ease: "easeOut" }}
-      className="absolute left-16 top-0 z-[200] rounded-2xl border border-white/12 shadow-2xl"
-      style={{ background: "rgba(6,6,18,0.98)", backdropFilter: "blur(28px)", width: 300, maxHeight: "calc(100vh - 32px)", overflowY: "auto" }}
+      className="fixed z-[500] rounded-2xl border border-white/12 shadow-2xl"
+      style={{
+        background: "rgba(6,6,18,0.98)",
+        backdropFilter: "blur(28px)",
+        width: 300,
+        maxHeight: "calc(100vh - 32px)",
+        overflowY: "auto",
+        left: 72,
+        top: 16,
+      }}
     >
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <div className="flex items-center gap-2">
-          <div className={`h-6 w-6 ${shapeClass} flex items-center justify-center text-sm shrink-0`}
+          <div
+            className={`h-6 w-6 ${shapeClass} flex items-center justify-center text-sm shrink-0`}
             style={{ background: previewColor.bg, border: `1px solid ${previewColor.border}`, boxShadow: `0 0 10px ${previewColor.glow}40` }}
           >
             <span style={{ ...letterCSS, fontSize: 11 }}>N</span>
@@ -453,6 +472,7 @@ export default function Sidebar() {
   const logoStyle = useLogoStyle();
   const [lockHovered, setLockHovered] = useState(false);
   const [logoutHovered, setLogoutHovered] = useState(false);
+  const logoButtonRef = useRef<HTMLButtonElement>(null);
 
   const isCollapsed = !isPinned && !isHovered;
 
@@ -469,22 +489,32 @@ export default function Sidebar() {
 
   const navGroups = [
     {
-      label: "Principal",
+      label: "Accueil",
       items: [
         { to: "/dashboard", icon: LayoutDashboard, label: t.nav.dashboard },
         { to: "/ai",        icon: Bot,             label: "NEXUS AI"       },
-        { to: "/spotify",   icon: Music,           label: t.nav.spotify    },
+        { to: "/widgets",   icon: LayoutGrid,      label: t.nav.widgets    },
+      ],
+    },
+    {
+      label: "Médias & Social",
+      items: [
+        { to: "/spotify",   icon: Headphones,      label: t.nav.spotify    },
         { to: "/discord",   icon: MessageSquare,   label: t.nav.discord    },
       ],
     },
     {
-      label: "Outils",
+      label: "Personnel",
       items: [
         { to: "/analytics", icon: StickyNote,      label: t.nav.analytics  },
-        { to: "/security",  icon: Shield,          label: t.nav.security   },
-        { to: "/database",  icon: Bookmark,        label: t.nav.database   },
         { to: "/logs",      icon: CheckSquare,     label: t.nav.logs       },
-        { to: "/widgets",   icon: LayoutGrid,      label: t.nav.widgets    },
+        { to: "/database",  icon: Bookmark,        label: t.nav.database   },
+      ],
+    },
+    {
+      label: "Système",
+      items: [
+        { to: "/security",  icon: Shield,          label: t.nav.security   },
       ],
     },
     {
@@ -500,39 +530,52 @@ export default function Sidebar() {
   if (isMobile) return <MobileNav />;
 
   return (
-    <motion.div
-      animate={{ width: isCollapsed ? 80 : 256 }}
-      transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="relative flex h-screen flex-col overflow-hidden border-r border-white/8 z-50 shrink-0"
-      style={{ background: "rgba(5,5,14,0.98)", backdropFilter: "blur(0px)" }}
-    >
-      {/* Subtle side accent line using logoColor */}
-      <div className="absolute inset-y-0 right-0 w-px pointer-events-none"
-        style={{ background: `linear-gradient(180deg, transparent, ${logoColor.border}, transparent)`, opacity: 0.5 }}
-      />
+    <>
+      {/* NexusHub portal — fixed to avoid overflow clipping */}
+      <AnimatePresence>
+        {showHub && (
+          <NexusHub
+            onClose={() => setShowHub(false)}
+            logoColor={logoColor}
+            logoStyle={logoStyle}
+            anchorRef={logoButtonRef}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Pin toggle */}
-      <motion.button
-        onClick={() => setIsPinned(!isPinned)}
-        className="absolute -right-3.5 top-7 z-50 flex h-7 w-7 items-center justify-center rounded-full border border-white/12 text-gray-500 hover:text-white transition-colors duration-150"
-        style={{ background: "rgba(12,12,28,0.95)", backdropFilter: "blur(8px)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
-        animate={{ opacity: isCollapsed || isPinned ? 1 : 0 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        title={isPinned ? "Désépingler" : "Épingler"}
+      <motion.div
+        animate={{ width: isCollapsed ? 80 : 256 }}
+        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className="relative flex h-screen flex-col border-r border-white/8 z-50 shrink-0"
+        style={{ background: "rgba(5,5,14,0.98)", backdropFilter: "blur(0px)", overflow: "visible" }}
       >
-        {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-      </motion.button>
+        {/* Subtle side accent line using logoColor */}
+        <div className="absolute inset-y-0 right-0 w-px pointer-events-none"
+          style={{ background: `linear-gradient(180deg, transparent, ${logoColor.border}, transparent)`, opacity: 0.5 }}
+        />
 
-      {/* Logo header */}
-      <div className={`flex-shrink-0 flex items-center ${isCollapsed ? "justify-center" : "gap-3"} px-4 pt-5 pb-4`}>
-        <div className="relative">
-          <AnimatePresence>
-            {showHub && <NexusHub onClose={() => setShowHub(false)} logoColor={logoColor} logoStyle={logoStyle} />}
-          </AnimatePresence>
+        {/* Pin toggle */}
+        <motion.button
+          onClick={() => setIsPinned(!isPinned)}
+          className="absolute -right-3.5 top-7 z-50 flex h-7 w-7 items-center justify-center rounded-full border border-white/12 text-gray-500 hover:text-white transition-colors duration-150"
+          style={{ background: "rgba(12,12,28,0.95)", backdropFilter: "blur(8px)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+          animate={{ opacity: isCollapsed || isPinned ? 1 : 0 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          title={isPinned ? "Désépingler" : "Épingler"}
+        >
+          {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+        </motion.button>
+
+        {/* Logo header — overflow-hidden here clips the NEXUS text properly */}
+        <div
+          className={`flex-shrink-0 flex items-center ${isCollapsed ? "justify-center" : "gap-3"} px-4 pt-5 pb-4 overflow-hidden`}
+          style={{ minWidth: 0 }}
+        >
           <motion.button
+            ref={logoButtonRef}
             onClick={() => setShowHub(!showHub)}
             title="Nexus Hub"
             className={`flex shrink-0 h-8 w-8 items-center justify-center ${shapeClass}`}
@@ -546,102 +589,103 @@ export default function Sidebar() {
           >
             <span className="text-sm select-none leading-none" style={letterCSS}>N</span>
           </motion.button>
-        </div>
-        <AnimatePresence>
-          {!isCollapsed && (
-            <motion.h1
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: 0.15 }}
-              className="text-xl font-black tracking-[0.2em] whitespace-nowrap"
-              style={{ background: "linear-gradient(135deg, #ffffff 0%, rgba(160,180,255,0.85) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
-            >NEXUS</motion.h1>
-          )}
-        </AnimatePresence>
-      </div>
 
-      {/* Nav groups */}
-      <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2 pb-2 space-y-0 custom-scrollbar">
-        {navGroups.map((group, gi) => (
-          <div key={gi}>
-            <SectionLabel label={group.label} collapsed={isCollapsed} />
-            <div className="space-y-0.5">
-              {group.items.map((item) => (
-                <NavItem
-                  key={item.to}
-                  to={item.to}
-                  icon={item.icon}
-                  label={item.label}
-                  collapsed={isCollapsed}
-                  logoColor={logoColor}
-                />
-              ))}
+          <AnimatePresence>
+            {!isCollapsed && (
+              <motion.h1
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.13 }}
+                className="text-xl font-black tracking-[0.2em] whitespace-nowrap"
+                style={{ background: "linear-gradient(135deg, #ffffff 0%, rgba(160,180,255,0.85) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+              >NEXUS</motion.h1>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Nav groups */}
+        <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2 pb-2 space-y-0 custom-scrollbar">
+          {navGroups.map((group, gi) => (
+            <div key={gi}>
+              <SectionLabel label={group.label} collapsed={isCollapsed} />
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <NavItem
+                    key={item.to}
+                    to={item.to}
+                    icon={item.icon}
+                    label={item.label}
+                    collapsed={isCollapsed}
+                    logoColor={logoColor}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </nav>
+          ))}
+        </nav>
 
-      {/* Bottom section */}
-      <div className="flex-shrink-0 px-2 pt-2 pb-3 border-t border-white/6">
-        <AnimatePresence>
-          {!isCollapsed && user && (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              transition={{ duration: 0.14 }}
-              className="mb-2 flex items-center gap-3 rounded-xl border border-white/6 bg-white/4 px-3 py-2"
-            >
-              <div className="h-8 w-8 shrink-0 rounded-full overflow-hidden border"
-                style={{ borderColor: logoColor.border }}
+        {/* Bottom section */}
+        <div className="flex-shrink-0 px-2 pt-2 pb-3 border-t border-white/6 overflow-hidden">
+          <AnimatePresence>
+            {!isCollapsed && user && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.14 }}
+                className="mb-2 flex items-center gap-3 rounded-xl border border-white/6 bg-white/4 px-3 py-2"
               >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center text-xs font-bold text-white"
-                    style={{ background: `linear-gradient(135deg, ${logoColor.hex}55, ${logoColor.hex}33)` }}
-                  >
-                    {initial}
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-white truncate">{user.username}</p>
-                <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <div className="h-8 w-8 shrink-0 rounded-full overflow-hidden border"
+                  style={{ borderColor: logoColor.border }}
+                >
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-xs font-bold text-white"
+                      style={{ background: `linear-gradient(135deg, ${logoColor.hex}55, ${logoColor.hex}33)` }}
+                    >
+                      {initial}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-white truncate">{user.username}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        {/* Lock button */}
-        <div className="relative">
-          <button
-            onClick={lock}
-            onMouseEnter={() => setLockHovered(true)}
-            onMouseLeave={() => setLockHovered(false)}
-            className={`w-full flex items-center ${isCollapsed ? "justify-center" : "gap-3"} rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-yellow-500/10 hover:text-yellow-400 mb-0.5`}
-          >
-            <Lock className="h-5 w-5 shrink-0" />
-            {!isCollapsed && <span className="whitespace-nowrap">Verrouiller</span>}
-          </button>
-          {isCollapsed && <NavTooltip label="Verrouiller" visible={lockHovered} />}
-        </div>
+          {/* Lock button */}
+          <div className="relative">
+            <button
+              onClick={lock}
+              onMouseEnter={() => setLockHovered(true)}
+              onMouseLeave={() => setLockHovered(false)}
+              className={`w-full flex items-center ${isCollapsed ? "justify-center" : "gap-3"} rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-yellow-500/10 hover:text-yellow-400 mb-0.5`}
+            >
+              <Lock className="h-5 w-5 shrink-0" />
+              {!isCollapsed && <span className="whitespace-nowrap">Verrouiller</span>}
+            </button>
+            {isCollapsed && <NavTooltip label="Verrouiller" visible={lockHovered} />}
+          </div>
 
-        {/* Logout button */}
-        <div className="relative">
-          <button
-            onClick={handleLogout}
-            onMouseEnter={() => setLogoutHovered(true)}
-            onMouseLeave={() => setLogoutHovered(false)}
-            className={`w-full flex items-center ${isCollapsed ? "justify-center" : "gap-3"} rounded-xl px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-red-500/10 hover:text-red-400`}
-          >
-            <LogOut className="h-5 w-5 shrink-0" />
-            {!isCollapsed && <span className="whitespace-nowrap">{t.nav.logout}</span>}
-          </button>
-          {isCollapsed && <NavTooltip label={t.nav.logout} visible={logoutHovered} />}
+          {/* Logout button */}
+          <div className="relative">
+            <button
+              onClick={handleLogout}
+              onMouseEnter={() => setLogoutHovered(true)}
+              onMouseLeave={() => setLogoutHovered(false)}
+              className={`w-full flex items-center ${isCollapsed ? "justify-center" : "gap-3"} rounded-xl px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-red-500/10 hover:text-red-400`}
+            >
+              <LogOut className="h-5 w-5 shrink-0" />
+              {!isCollapsed && <span className="whitespace-nowrap">{t.nav.logout}</span>}
+            </button>
+            {isCollapsed && <NavTooltip label={t.nav.logout} visible={logoutHovered} />}
+          </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </>
   );
 }
