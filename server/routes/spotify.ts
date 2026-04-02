@@ -382,6 +382,45 @@ router.get("/player/recently-played", authenticateToken, async (req: any, res) =
   }
 });
 
+router.get("/recommendations", authenticateToken, async (req: any, res) => {
+  const token = await getValidSpotifyToken(req.user.id);
+  if (!token) return res.status(401).json({ error: "Spotify not connected" });
+
+  const { trackId, artistId } = req.query;
+
+  try {
+    const params = new URLSearchParams({ limit: "20" });
+    if (trackId) params.set("seed_tracks", trackId as string);
+    if (artistId) params.set("seed_artists", artistId as string);
+    if (!trackId && !artistId) {
+      const topRes = await axios.get("https://api.spotify.com/v1/me/top/tracks?limit=3&time_range=short_term", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const seeds = topRes.data.items?.slice(0, 2).map((t: any) => t.id).join(",") || "";
+      if (seeds) params.set("seed_tracks", seeds);
+      else params.set("seed_genres", "pop,hip-hop");
+    }
+
+    const r = await axios.get(`https://api.spotify.com/v1/recommendations?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    res.json(r.data.tracks || []);
+  } catch (err: any) {
+    if (err.response?.status === 403) {
+      try {
+        const topRes = await axios.get("https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=short_term", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        res.json(topRes.data.items || []);
+      } catch {
+        res.json([]);
+      }
+    } else {
+      res.status(err.response?.status || 500).json({ error: "Failed to get recommendations" });
+    }
+  }
+});
+
 router.get("/player/saved", authenticateToken, async (req: any, res) => {
   const { ids } = req.query;
   if (!ids) return res.status(400).json({ error: "ids required" });
