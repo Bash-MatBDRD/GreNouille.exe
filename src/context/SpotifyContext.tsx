@@ -9,6 +9,14 @@ declare global {
   }
 }
 
+export type SpotifyDevice = {
+  id: string;
+  name: string;
+  type: string;
+  is_active: boolean;
+  volume_percent: number;
+};
+
 type SpotifyContextType = {
   player: any;
   deviceId: string | null;
@@ -18,6 +26,10 @@ type SpotifyContextType = {
   shuffle: boolean;
   repeatMode: number;
   needsReauth: boolean;
+  progress: number;
+  duration: number;
+  devices: SpotifyDevice[];
+  likedIds: Set<string>;
   setVolume: (v: number) => Promise<void>;
   playTrack: (uri?: string) => Promise<void>;
   pauseTrack: () => Promise<void>;
@@ -27,6 +39,10 @@ type SpotifyContextType = {
   toggleRepeat: () => Promise<void>;
   disconnectSpotify: () => Promise<void>;
   reconnect: () => void;
+  transferPlayback: (deviceId: string) => Promise<void>;
+  fetchDevices: () => Promise<void>;
+  toggleLike: (trackId: string) => Promise<void>;
+  seekTo: (positionMs: number) => Promise<void>;
 };
 
 const SpotifyContext = createContext<SpotifyContextType | null>(null);
@@ -41,12 +57,47 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
   const [shuffle, setShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState(0);
   const [needsReauth, setNeedsReauth] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [devices, setDevices] = useState<SpotifyDevice[]>([]);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   const playerRef = useRef<any>(null);
   const deviceIdRef = useRef<string | null>(null);
   const initializedRef = useRef(false);
-  // When SDK is active and providing state, we slow down polling significantly
   const sdkActiveRef = useRef(false);
+  const progressIntervalRef = useRef<any>(null);
+  const progressRef = useRef(0);
+  const isPlayingRef = useRef(false);
+
+  const startProgressTick = useCallback(() => {
+    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    progressIntervalRef.current = setInterval(() => {
+      if (isPlayingRef.current) {
+        progressRef.current += 1000;
+        setProgress(progressRef.current);
+      }
+    }, 1000);
+  }, []);
+
+  const stopProgressTick = useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+  }, []);
+
+  const checkLiked = useCallback(async (trackId: string) => {
+    try {
+      const r = await axios.get(`/api/spotify/player/saved?ids=${trackId}`);
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        if (r.data[0]) next.add(trackId);
+        else next.delete(trackId);
+        return next;
+      });
+    } catch {}
+  }, []);
 
   const initPlayer = useCallback(async () => {
     if (playerRef.current) return;
@@ -85,10 +136,18 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
 
       spotifyPlayer.addListener("player_state_changed", (state: any) => {
         if (!state) return;
-        setCurrentTrack(state.track_window.current_track);
+        const track = state.track_window.current_track;
+        setCurrentTrack(track);
         setIsPlaying(!state.paused);
+        isPlayingRef.current = !state.paused;
         setShuffle(state.shuffle);
         setRepeatMode(state.repeat_mode);
+        progressRef.current = state.position;
+        setProgress(state.position);
+        setDuration(state.duration);
+        if (!state.paused) startProgressTick();
+        else stopProgressTick();
+        if (track?.id) checkLiked(track.id);
       });
 
       spotifyPlayer.addListener("authentication_error", () => {
@@ -107,9 +166,8 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("[Spotify] Failed to initialize player:", err);
     }
-  }, []);
+  }, [checkLiked, startProgressTick, stopProgressTick]);
 
-  // Load and init the SDK once
   useEffect(() => {
     if (!user?.hasSpotify || needsReauth || initializedRef.current) return;
     initializedRef.current = true;
@@ -131,24 +189,30 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
     window.onSpotifyWebPlaybackSDKReady = initPlayer;
   }, [user?.hasSpotify, needsReauth, initPlayer]);
 
-  // Polling — only runs when SDK is NOT active, to show current state without the SDK
   useEffect(() => {
     if (!user?.hasSpotify || needsReauth) return;
 
     const fetchCurrent = async () => {
-      // If SDK is active and providing updates, skip REST polling
       if (sdkActiveRef.current) return;
       try {
         const res = await axios.get("/api/spotify/player/current");
         if (res.data?.item) {
-          setCurrentTrack(res.data.item);
+          const track = res.data.item;
+          setCurrentTrack(track);
           setIsPlaying(res.data.is_playing);
+          isPlayingRef.current = res.data.is_playing;
           setShuffle(res.data.shuffle_state ?? false);
           setRepeatMode(
             res.data.repeat_state === "track" ? 2
             : res.data.repeat_state === "context" ? 1 : 0
           );
+          progressRef.current = res.data.progress_ms ?? 0;
+          setProgress(res.data.progress_ms ?? 0);
+          setDuration(track.duration_ms ?? 0);
           setNeedsReauth(false);
+          if (track?.id) checkLiked(track.id);
+          if (res.data.is_playing) startProgressTick();
+          else stopProgressTick();
         }
       } catch (err: any) {
         if (err.response?.status === 401 || err.response?.status === 403) {
@@ -158,10 +222,20 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchCurrent();
-    // Poll every 8s only when SDK not active
     const interval = setInterval(fetchCurrent, 8000);
     return () => clearInterval(interval);
-  }, [user?.hasSpotify, needsReauth]);
+  }, [user?.hasSpotify, needsReauth, checkLiked, startProgressTick, stopProgressTick]);
+
+  useEffect(() => {
+    return () => stopProgressTick();
+  }, [stopProgressTick]);
+
+  const fetchDevices = useCallback(async () => {
+    try {
+      const r = await axios.get("/api/spotify/player/devices");
+      setDevices(r.data || []);
+    } catch {}
+  }, []);
 
   const setVolume = async (v: number) => {
     setVolumeState(v);
@@ -179,13 +253,20 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
       device_id: dId || undefined,
     });
     setIsPlaying(true);
-    // Refresh state via SDK after a short delay
+    isPlayingRef.current = true;
+    startProgressTick();
     if (playerRef.current) {
       setTimeout(async () => {
         const state = await playerRef.current?.getCurrentState();
         if (state) {
-          setCurrentTrack(state.track_window.current_track);
+          const track = state.track_window.current_track;
+          setCurrentTrack(track);
           setIsPlaying(!state.paused);
+          isPlayingRef.current = !state.paused;
+          progressRef.current = state.position;
+          setProgress(state.position);
+          setDuration(state.duration);
+          if (track?.id) checkLiked(track.id);
         }
       }, 800);
     }
@@ -198,6 +279,8 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
       await axios.put("/api/spotify/player/pause");
     }
     setIsPlaying(false);
+    isPlayingRef.current = false;
+    stopProgressTick();
   };
 
   const skipNext = async () => {
@@ -229,17 +312,64 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
     setRepeatMode(next);
   };
 
+  const seekTo = async (positionMs: number) => {
+    progressRef.current = positionMs;
+    setProgress(positionMs);
+    if (playerRef.current) {
+      await playerRef.current.seek(positionMs).catch(() => {});
+    } else {
+      await axios.post("/api/spotify/player/seek", { position_ms: positionMs }).catch(() => {});
+    }
+  };
+
+  const transferPlayback = async (targetDeviceId: string) => {
+    await axios.put("/api/spotify/player/transfer", { device_id: targetDeviceId, play: isPlaying });
+    setDevices((prev) =>
+      prev.map((d) => ({ ...d, is_active: d.id === targetDeviceId }))
+    );
+  };
+
+  const toggleLike = async (trackId: string) => {
+    const isLiked = likedIds.has(trackId);
+    setLikedIds((prev) => {
+      const next = new Set(prev);
+      if (isLiked) next.delete(trackId);
+      else next.add(trackId);
+      return next;
+    });
+    try {
+      if (isLiked) {
+        await axios.delete("/api/spotify/player/save", { data: { ids: [trackId] } });
+      } else {
+        await axios.put("/api/spotify/player/save", { ids: [trackId] });
+      }
+    } catch {
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        if (isLiked) next.add(trackId);
+        else next.delete(trackId);
+        return next;
+      });
+    }
+  };
+
   const disconnectSpotify = async () => {
     if (playerRef.current) {
       playerRef.current.disconnect();
       playerRef.current = null;
     }
+    stopProgressTick();
     sdkActiveRef.current = false;
     deviceIdRef.current = null;
     setPlayer(null);
     setDeviceId(null);
     setCurrentTrack(null);
     setIsPlaying(false);
+    isPlayingRef.current = false;
+    setProgress(0);
+    setDuration(0);
+    setDevices([]);
+    setLikedIds(new Set());
     initializedRef.current = false;
     await axios.post("/api/spotify/disconnect").catch(() => {});
   };
@@ -254,8 +384,10 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
     <SpotifyContext.Provider
       value={{
         player, deviceId, currentTrack, isPlaying, volume, shuffle, repeatMode, needsReauth,
+        progress, duration, devices, likedIds,
         setVolume, playTrack, pauseTrack, skipNext, skipPrev,
         toggleShuffle, toggleRepeat, disconnectSpotify, reconnect,
+        transferPlayback, fetchDevices, toggleLike, seekTo,
       }}
     >
       {children}

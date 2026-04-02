@@ -352,6 +352,106 @@ const slashCommands = [
   new SlashCommandBuilder()
     .setName("backup")
     .setDescription("(Owner uniquement) Sauvegarde complète du serveur de A à Z"),
+
+  new SlashCommandBuilder()
+    .setName("nick")
+    .setDescription("(Owner uniquement) Change le pseudo d'un membre")
+    .addUserOption((o) =>
+      o.setName("membre").setDescription("Le membre cible").setRequired(true)
+    )
+    .addStringOption((o) =>
+      o.setName("pseudo").setDescription("Le nouveau pseudo (vide pour réinitialiser)").setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("addrole")
+    .setDescription("(Owner uniquement) Donne un rôle à un membre")
+    .addUserOption((o) =>
+      o.setName("membre").setDescription("Le membre cible").setRequired(true)
+    )
+    .addRoleOption((o) =>
+      o.setName("role").setDescription("Le rôle à donner").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("removerole")
+    .setDescription("(Owner uniquement) Retire un rôle d'un membre")
+    .addUserOption((o) =>
+      o.setName("membre").setDescription("Le membre cible").setRequired(true)
+    )
+    .addRoleOption((o) =>
+      o.setName("role").setDescription("Le rôle à retirer").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("dm")
+    .setDescription("(Owner uniquement) Envoie un DM à un membre")
+    .addUserOption((o) =>
+      o.setName("membre").setDescription("Le destinataire").setRequired(true)
+    )
+    .addStringOption((o) =>
+      o.setName("message").setDescription("Le message à envoyer").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("nuke")
+    .setDescription("(Owner uniquement) Recrée le salon actuel (supprime tout l'historique)")
+    .addChannelOption((o) =>
+      o.setName("salon").setDescription("Salon à nuker (défaut: actuel)").setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("lockdown")
+    .setDescription("(Owner uniquement) Verrouille ou déverrouille tous les salons texte du serveur")
+    .addBooleanOption((o) =>
+      o.setName("actif").setDescription("true = lock, false = unlock").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("massrole")
+    .setDescription("(Owner uniquement) Donne ou retire un rôle à tous les membres")
+    .addRoleOption((o) =>
+      o.setName("role").setDescription("Le rôle à appliquer").setRequired(true)
+    )
+    .addBooleanOption((o) =>
+      o.setName("donner").setDescription("true = donner, false = retirer").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setslowmode")
+    .setDescription("(Owner uniquement) Définit le slowmode sur n'importe quel salon")
+    .addIntegerOption((o) =>
+      o.setName("secondes").setDescription("Délai en secondes (0 = désactivé)").setRequired(true).setMinValue(0).setMaxValue(21600)
+    )
+    .addChannelOption((o) =>
+      o.setName("salon").setDescription("Salon cible (défaut: actuel)").setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("ghostping")
+    .setDescription("(Owner uniquement) Envoie et supprime immédiatement un ping")
+    .addUserOption((o) =>
+      o.setName("membre").setDescription("La victime du ghost ping").setRequired(true)
+    )
+    .addChannelOption((o) =>
+      o.setName("salon").setDescription("Salon cible (défaut: actuel)").setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("status")
+    .setDescription("(Owner uniquement) Change le statut du bot")
+    .addStringOption((o) =>
+      o.setName("presence").setDescription("Statut: online, idle, dnd, invisible").setRequired(true)
+        .addChoices(
+          { name: "🟢 En ligne", value: "online" },
+          { name: "🌙 Absent", value: "idle" },
+          { name: "🔴 Ne pas déranger", value: "dnd" },
+          { name: "⚫ Invisible", value: "invisible" },
+        )
+    )
+    .addStringOption((o) =>
+      o.setName("activite").setDescription("Activité affichée (optionnel)").setRequired(false)
+    ),
 ].map((cmd) => cmd.toJSON());
 
 // ── Register slash commands ────────────────────────────────────────────────────
@@ -1142,6 +1242,147 @@ async function handleInteraction(interaction: any) {
       }
     }
 
+    // ── nick (OWNER ONLY) ──
+    else if (commandName === "nick") {
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      const target = interaction.options.getUser("membre", true);
+      const pseudo = interaction.options.getString("pseudo") ?? null;
+      const guildMember = await guild.members.fetch(target.id).catch(() => null);
+      if (!guildMember) return interaction.reply({ content: "Membre introuvable.", ephemeral: true });
+      await guildMember.setNickname(pseudo);
+      await interaction.reply({ content: pseudo ? `✅ Pseudo de **${target.username}** changé en **${pseudo}**.` : `✅ Pseudo de **${target.username}** réinitialisé.`, ephemeral: true });
+    }
+
+    // ── addrole (OWNER ONLY) ──
+    else if (commandName === "addrole") {
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      const target = interaction.options.getUser("membre", true);
+      const role = interaction.options.getRole("role", true);
+      const guildMember = await guild.members.fetch(target.id).catch(() => null);
+      if (!guildMember) return interaction.reply({ content: "Membre introuvable.", ephemeral: true });
+      await guildMember.roles.add(role.id);
+      await interaction.reply({ content: `✅ Rôle **${role.name}** donné à **${target.username}**.`, ephemeral: true });
+    }
+
+    // ── removerole (OWNER ONLY) ──
+    else if (commandName === "removerole") {
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      const target = interaction.options.getUser("membre", true);
+      const role = interaction.options.getRole("role", true);
+      const guildMember = await guild.members.fetch(target.id).catch(() => null);
+      if (!guildMember) return interaction.reply({ content: "Membre introuvable.", ephemeral: true });
+      await guildMember.roles.remove(role.id);
+      await interaction.reply({ content: `✅ Rôle **${role.name}** retiré de **${target.username}**.`, ephemeral: true });
+    }
+
+    // ── dm (OWNER ONLY) ──
+    else if (commandName === "dm") {
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      const target = interaction.options.getUser("membre", true);
+      const message = interaction.options.getString("message", true);
+      try {
+        await target.send(message);
+        await interaction.reply({ content: `✅ DM envoyé à **${target.username}**.`, ephemeral: true });
+      } catch {
+        await interaction.reply({ content: `❌ Impossible d'envoyer un DM à **${target.username}**. Il a peut-être les DMs fermés.`, ephemeral: true });
+      }
+    }
+
+    // ── nuke (OWNER ONLY) ──
+    else if (commandName === "nuke") {
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      const targetCh = (interaction.options.getChannel("salon") ?? interaction.channel) as TextChannel;
+      await interaction.reply({ content: "💥 Nuking...", ephemeral: true });
+      const position = targetCh.position;
+      const parent = targetCh.parentId;
+      const name = targetCh.name;
+      const topic = (targetCh as any).topic ?? null;
+      const nsfw = (targetCh as any).nsfw ?? false;
+      await targetCh.delete("Nuke par owner");
+      const newCh = await guild.channels.create({
+        name,
+        type: ChannelType.GuildText,
+        topic: topic ?? undefined,
+        nsfw,
+        parent: parent ?? undefined,
+        position,
+      } as any);
+      await (newCh as TextChannel).send("💥 Ce salon a été nuké par l'owner.");
+    }
+
+    // ── lockdown (OWNER ONLY) ──
+    else if (commandName === "lockdown") {
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      const actif = interaction.options.getBoolean("actif", true);
+      await interaction.deferReply({ ephemeral: true });
+      const channels = guild.channels.cache.filter((c) => c.type === ChannelType.GuildText);
+      let count = 0;
+      for (const [, ch] of channels) {
+        try {
+          await (ch as TextChannel).permissionOverwrites.edit(guild.roles.everyone, { SendMessages: actif ? false : null });
+          count++;
+        } catch {}
+      }
+      await interaction.editReply({ content: actif ? `🔒 Lockdown activé — **${count}** salons verrouillés.` : `🔓 Lockdown levé — **${count}** salons déverrouillés.` });
+    }
+
+    // ── massrole (OWNER ONLY) ──
+    else if (commandName === "massrole") {
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      const role = interaction.options.getRole("role", true);
+      const donner = interaction.options.getBoolean("donner", true);
+      await interaction.deferReply({ ephemeral: true });
+      const members = await guild.members.fetch();
+      let count = 0;
+      for (const [, m] of members) {
+        if (m.user.bot) continue;
+        try {
+          if (donner) await m.roles.add(role.id);
+          else await m.roles.remove(role.id);
+          count++;
+        } catch {}
+      }
+      await interaction.editReply({ content: `✅ Rôle **${role.name}** ${donner ? "donné à" : "retiré de"} **${count}** membres.` });
+    }
+
+    // ── setslowmode (OWNER ONLY) ──
+    else if (commandName === "setslowmode") {
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      const secondes = interaction.options.getInteger("secondes", true);
+      const targetCh = (interaction.options.getChannel("salon") ?? interaction.channel) as TextChannel;
+      await (targetCh as any).setRateLimitPerUser(secondes);
+      await interaction.reply({ content: secondes === 0 ? `✅ Slowmode désactivé dans <#${targetCh.id}>.` : `✅ Slowmode de **${secondes}s** activé dans <#${targetCh.id}>.`, ephemeral: true });
+    }
+
+    // ── ghostping (OWNER ONLY) ──
+    else if (commandName === "ghostping") {
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      const target = interaction.options.getUser("membre", true);
+      const targetCh = (interaction.options.getChannel("salon") ?? interaction.channel) as TextChannel;
+      await interaction.deferReply({ ephemeral: true });
+      const msg = await targetCh.send(`<@${target.id}>`);
+      await msg.delete();
+      await interaction.editReply({ content: `👻 Ghost ping envoyé à **${target.username}** dans <#${targetCh.id}>.` });
+    }
+
+    // ── status (OWNER ONLY) ──
+    else if (commandName === "status") {
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      const presence = interaction.options.getString("presence", true) as any;
+      const activite = interaction.options.getString("activite");
+      client!.user!.setPresence({
+        status: presence,
+        activities: activite ? [{ name: activite, type: ActivityType.Playing }] : [],
+      });
+      await interaction.reply({ content: `✅ Statut changé en **${presence}**${activite ? ` avec l'activité **${activite}**` : ""}.`, ephemeral: true });
+    }
+
   } catch (err: any) {
     console.error(`[Discord] Erreur sur /${commandName}:`, err.message);
     try {
@@ -1202,14 +1443,29 @@ async function handleMention(message: any) {
 
 // ── Gateway init ───────────────────────────────────────────────────────────────
 
-export async function initDiscordGateway() {
-  const botToken = process.env.DISCORD_BOT_TOKEN;
-  if (!botToken) {
-    console.log("[Discord] Bot token not configured, skipping gateway init.");
+let reconnectAttempts = 0;
+const MAX_RECONNECT_DELAY = 60_000;
+
+async function scheduleReconnect(botToken: string) {
+  if (reconnectAttempts >= 10) {
+    console.error("[Discord] Trop de tentatives de reconnexion, abandon.");
     return;
   }
+  reconnectAttempts++;
+  const delay = Math.min(5_000 * Math.pow(1.5, reconnectAttempts - 1), MAX_RECONNECT_DELAY);
+  console.log(`[Discord] Reconnexion dans ${Math.round(delay / 1000)}s (tentative ${reconnectAttempts})...`);
+  setTimeout(() => connectGateway(botToken), delay);
+}
 
+async function connectGateway(botToken: string) {
   try {
+    if (client) {
+      client.removeAllListeners();
+      try { client.destroy(); } catch {}
+      client = null;
+      gatewayReady = false;
+    }
+
     client = new Client({
       intents: [
         GatewayIntentBits.Guilds,
@@ -1222,6 +1478,7 @@ export async function initDiscordGateway() {
 
     client.once("ready", async () => {
       gatewayReady = true;
+      reconnectAttempts = 0;
       console.log(`[Discord] Gateway prêt — connecté en tant que ${client!.user!.tag}`);
       await registerSlashCommands(botToken, client!.user!.id);
     });
@@ -1233,12 +1490,45 @@ export async function initDiscordGateway() {
       console.error("[Discord] Erreur gateway:", err.message);
     });
 
+    client.on("disconnect" as any, () => {
+      console.warn("[Discord] Déconnecté du gateway.");
+      gatewayReady = false;
+      scheduleReconnect(botToken);
+    });
+
+    client.on("shardDisconnect" as any, (_event: any, shardId: number) => {
+      console.warn(`[Discord] Shard ${shardId} déconnecté.`);
+      gatewayReady = false;
+      scheduleReconnect(botToken);
+    });
+
+    client.on("shardReconnecting" as any, (shardId: number) => {
+      console.log(`[Discord] Shard ${shardId} en cours de reconnexion...`);
+    });
+
+    client.on("shardResume" as any, (shardId: number) => {
+      gatewayReady = true;
+      reconnectAttempts = 0;
+      console.log(`[Discord] Shard ${shardId} repris.`);
+    });
+
     await client.login(botToken);
   } catch (err: any) {
     console.error("[Discord] Impossible de se connecter:", err.message);
     client = null;
     gatewayReady = false;
+    scheduleReconnect(botToken);
   }
+}
+
+export async function initDiscordGateway() {
+  const botToken = process.env.DISCORD_BOT_TOKEN;
+  if (!botToken) {
+    console.log("[Discord] Bot token not configured, skipping gateway init.");
+    return;
+  }
+  reconnectAttempts = 0;
+  await connectGateway(botToken);
 }
 
 export function getDiscordClient(): Client | null {

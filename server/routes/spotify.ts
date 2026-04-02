@@ -382,6 +382,95 @@ router.get("/player/recently-played", authenticateToken, async (req: any, res) =
   }
 });
 
+router.get("/player/saved", authenticateToken, async (req: any, res) => {
+  const { ids } = req.query;
+  if (!ids) return res.status(400).json({ error: "ids required" });
+  const token = await getValidSpotifyToken(req.user.id);
+  if (!token) return res.status(401).json({ error: "Spotify not connected" });
+  try {
+    const r = await axios.get(`https://api.spotify.com/v1/me/tracks/contains?ids=${ids}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    res.json(r.data);
+  } catch (err: any) {
+    res.status(err.response?.status || 500).json({ error: "Failed to check saved tracks" });
+  }
+});
+
+router.put("/player/save", authenticateToken, async (req: any, res) => {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "ids array required" });
+  const token = await getValidSpotifyToken(req.user.id);
+  if (!token) return res.status(401).json({ error: "Spotify not connected" });
+  try {
+    await axios.put("https://api.spotify.com/v1/me/tracks", { ids }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(err.response?.status || 500).json({ error: "Failed to save track" });
+  }
+});
+
+router.delete("/player/save", authenticateToken, async (req: any, res) => {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "ids array required" });
+  const token = await getValidSpotifyToken(req.user.id);
+  if (!token) return res.status(401).json({ error: "Spotify not connected" });
+  try {
+    await axios.delete("https://api.spotify.com/v1/me/tracks", {
+      data: { ids },
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(err.response?.status || 500).json({ error: "Failed to unsave track" });
+  }
+});
+
+router.put("/player/transfer", authenticateToken, async (req: any, res) => {
+  const { device_id, play } = req.body;
+  if (!device_id) return res.status(400).json({ error: "device_id required" });
+  const token = await getValidSpotifyToken(req.user.id);
+  if (!token) return res.status(401).json({ error: "Spotify not connected" });
+  try {
+    await axios.put("https://api.spotify.com/v1/me/player", { device_ids: [device_id], play: play ?? false }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(err.response?.status || 500).json({ error: "Failed to transfer playback" });
+  }
+});
+
+router.get("/player/queue", authenticateToken, async (req: any, res) => {
+  const token = await getValidSpotifyToken(req.user.id);
+  if (!token) return res.status(401).json({ error: "Spotify not connected" });
+  try {
+    const r = await axios.get("https://api.spotify.com/v1/me/player/queue", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    res.json(r.data);
+  } catch (err: any) {
+    res.status(err.response?.status || 500).json({ error: "Failed to get queue" });
+  }
+});
+
+router.post("/player/seek", authenticateToken, async (req: any, res) => {
+  const { position_ms } = req.body;
+  if (position_ms === undefined) return res.status(400).json({ error: "position_ms required" });
+  const token = await getValidSpotifyToken(req.user.id);
+  if (!token) return res.status(401).json({ error: "Spotify not connected" });
+  try {
+    await axios.put(`https://api.spotify.com/v1/me/player/seek?position_ms=${position_ms}`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(err.response?.status || 500).json({ error: "Failed to seek" });
+  }
+});
+
 router.post("/disconnect", authenticateToken, async (req: any, res) => {
   try {
     db.prepare("UPDATE users SET spotifyAccessToken = NULL, spotifyRefreshToken = NULL, spotifyTokenExpiry = NULL WHERE id = ?").run(req.user.id);
