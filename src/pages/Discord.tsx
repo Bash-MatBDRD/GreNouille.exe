@@ -203,8 +203,9 @@ export default function Discord() {
 
   useEffect(() => {
     if (configured !== true) return;
-    const interval = setInterval(() => fetchLogs(selectedChannel || undefined), 20000);
-    return () => clearInterval(interval);
+    const logInterval = setInterval(() => fetchLogs(selectedChannel || undefined), 20000);
+    const botInterval = setInterval(() => { fetchBotInfo(); fetchGuilds(); }, 10000);
+    return () => { clearInterval(logInterval); clearInterval(botInterval); };
   }, [configured, selectedChannel]);
 
   useEffect(() => {

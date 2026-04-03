@@ -316,6 +316,69 @@ function WidgetContent({ id }: { id: string }) {
   return null;
 }
 
+const SWIPE_THRESHOLD = 90;
+
+function SwipeableWidget({ wid, w, onRemove, onNavigate }: {
+  wid: string;
+  w: typeof ALL_WIDGETS[number];
+  onRemove: (id: string) => void;
+  onNavigate: (path: string) => void;
+}) {
+  const [dragX, setDragX] = useState(0);
+  const [removing, setRemoving] = useState(false);
+  const isPastThreshold = dragX > SWIPE_THRESHOLD;
+
+  const handleDragEnd = (_: any, info: { offset: { x: number }; velocity: { x: number } }) => {
+    if (info.offset.x > SWIPE_THRESHOLD || info.velocity.x > 400) {
+      setRemoving(true);
+      setTimeout(() => onRemove(wid), 250);
+    } else {
+      setDragX(0);
+    }
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      <div className={`absolute inset-y-0 left-0 flex items-center justify-end pr-6 rounded-xl transition-opacity duration-150 ${isPastThreshold ? "opacity-100" : "opacity-0"}`}
+        style={{ width: `${Math.min(dragX, 160)}px`, background: "linear-gradient(to right, rgba(239,68,68,0.0), rgba(239,68,68,0.35))" }}>
+        <div className="flex flex-col items-center gap-1">
+          <X className="h-5 w-5 text-red-400" />
+          <span className="text-[10px] text-red-400 font-semibold">Supprimer</span>
+        </div>
+      </div>
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: 0, right: 160 }}
+        dragElastic={0.15}
+        onDrag={(_: any, info: { offset: { x: number } }) => setDragX(Math.max(0, info.offset.x))}
+        onDragEnd={handleDragEnd}
+        animate={removing ? { x: 200, opacity: 0 } : {}}
+        transition={removing ? { duration: 0.2 } : { type: "spring", stiffness: 400, damping: 35 }}
+        style={{ x: 0 }}
+        className={`relative border ${w.border} ${w.bg} p-4 group rounded-xl cursor-grab active:cursor-grabbing touch-pan-y`}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <div
+            className={`flex items-center gap-2 text-sm font-semibold ${w.color} ${WIDGET_LINKS[wid] ? "hover:opacity-80 transition-opacity" : ""}`}
+            style={WIDGET_LINKS[wid] ? { cursor: "pointer" } : undefined}
+            onClick={() => WIDGET_LINKS[wid] && onNavigate(WIDGET_LINKS[wid])}
+          >
+            <w.icon className="h-4 w-4" />
+            {w.label}
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(wid); }}
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/10 text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-500/20 active:scale-90"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+        <WidgetContent id={wid} />
+      </motion.div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -483,22 +546,7 @@ export default function Dashboard() {
                 const w = ALL_WIDGETS.find((x) => x.id === wid);
                 if (!w) return null;
                 return (
-                  <motion.div key={wid} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className={`relative rounded-xl border ${w.border} ${w.bg} p-4 group`}>
-                    <div className="mb-3 flex items-center justify-between">
-                      <div
-                        className={`flex items-center gap-2 text-sm font-semibold ${w.color} ${WIDGET_LINKS[wid] ? "hover:opacity-80 transition-opacity" : ""}`}
-                        style={WIDGET_LINKS[wid] ? { cursor: "pointer" } : undefined}
-                        onClick={() => WIDGET_LINKS[wid] && navigate(WIDGET_LINKS[wid])}
-                      >
-                        <w.icon className="h-4 w-4" />
-                        {w.label}
-                      </div>
-                      <button onClick={() => removeWidget(wid)} className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/10 text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-500/20 active:scale-90">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                    <WidgetContent id={wid} />
-                  </motion.div>
+                  <SwipeableWidget key={wid} wid={wid} w={w} onRemove={removeWidget} onNavigate={(path) => navigate(path)} />
                 );
               })}
             </div>

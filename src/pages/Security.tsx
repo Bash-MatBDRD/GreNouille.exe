@@ -159,22 +159,89 @@ export default function Security() {
   const handleAddPasskey = async () => {
     if (!passkeyType) return;
     setRegistering(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    const name = passkeyName.trim() || PASSKEY_LABELS[passkeyType];
-    const newKey: Passkey = {
-      id: Math.random().toString(36).slice(2),
-      name,
-      type: passkeyType,
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [...passkeys, newKey];
-    setPasskeys(updated);
-    savePasskeys(updated);
-    setRegistering(false);
-    setAddingPasskey(false);
-    setPasskeyType(null);
-    setPasskeyName("");
-    showToast(`${name} ajouté avec succès !`);
+    try {
+      if (!window.PublicKeyCredential) {
+        showToast("WebAuthn non supporté sur ce navigateur", false);
+        setRegistering(false);
+        return;
+      }
+
+      const isPlatform = passkeyType !== "securitykey";
+
+      if (isPlatform) {
+        const supported = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        if (!supported) {
+          showToast("Authentificateur biométrique non disponible sur cet appareil", false);
+          setRegistering(false);
+          return;
+        }
+      }
+
+      const challenge = crypto.getRandomValues(new Uint8Array(32));
+      const userId = crypto.getRandomValues(new Uint8Array(16));
+
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge,
+          rp: {
+            name: "NEXUS Panel",
+            id: window.location.hostname,
+          },
+          user: {
+            id: userId,
+            name: user?.email || user?.username || "nexus-user",
+            displayName: user?.username || "Utilisateur NEXUS",
+          },
+          pubKeyCredParams: [
+            { alg: -7, type: "public-key" },
+            { alg: -257, type: "public-key" },
+          ],
+          authenticatorSelection: {
+            authenticatorAttachment: isPlatform ? "platform" : "cross-platform",
+            userVerification: "required",
+            residentKey: "preferred",
+          },
+          timeout: 60000,
+          attestation: "none",
+        },
+      }) as PublicKeyCredential | null;
+
+      if (!credential) {
+        showToast("Enregistrement annulé", false);
+        setRegistering(false);
+        return;
+      }
+
+      const rawId = Array.from(new Uint8Array(credential.rawId));
+      const credId = btoa(String.fromCharCode(...rawId)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+
+      const name = passkeyName.trim() || PASSKEY_LABELS[passkeyType];
+      const newKey: Passkey = {
+        id: credId,
+        name,
+        type: passkeyType,
+        createdAt: new Date().toISOString(),
+      };
+      const updated = [...passkeys, newKey];
+      setPasskeys(updated);
+      savePasskeys(updated);
+      setAddingPasskey(false);
+      setPasskeyType(null);
+      setPasskeyName("");
+      showToast(`${name} enregistré avec succès !`);
+    } catch (err: any) {
+      if (err?.name === "NotAllowedError") {
+        showToast("Authentification refusée ou annulée", false);
+      } else if (err?.name === "InvalidStateError") {
+        showToast("Un authentificateur est déjà enregistré", false);
+      } else if (err?.name === "NotSupportedError") {
+        showToast("Type d'authentificateur non supporté", false);
+      } else {
+        showToast(err?.message || "Erreur lors de l'enregistrement", false);
+      }
+    } finally {
+      setRegistering(false);
+    }
   };
 
   const handleRemovePasskey = (id: string) => {
