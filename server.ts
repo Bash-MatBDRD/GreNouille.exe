@@ -68,6 +68,27 @@ async function startServer() {
 
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+
+    // Keepalive: ping our own /api/health every 4 minutes to prevent
+    // Vercel/Replit from killing the container when idle, which would
+    // disconnect the Discord gateway.
+    const selfUrl =
+      process.env.PUBLIC_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null);
+
+    if (selfUrl && process.env.DISCORD_BOT_TOKEN) {
+      const KEEPALIVE_INTERVAL = 4 * 60 * 1000; // 4 minutes
+      setInterval(async () => {
+        try {
+          const res = await fetch(`${selfUrl}/api/health`);
+          if (!res.ok) console.warn(`[Keepalive] Ping retourné ${res.status}`);
+        } catch (err: any) {
+          console.warn("[Keepalive] Ping échoué:", err?.message);
+        }
+      }, KEEPALIVE_INTERVAL);
+      console.log(`[Keepalive] Actif — ping toutes les 4 minutes sur ${selfUrl}`);
+    }
   });
 
   // Init Discord Gateway (non-blocking)

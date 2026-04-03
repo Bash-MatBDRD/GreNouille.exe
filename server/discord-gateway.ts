@@ -12,7 +12,25 @@ import {
   TextChannel,
   GuildMember,
 } from "discord.js";
+import { GoogleGenAI } from "@google/genai";
 import db from "./db.js";
+
+let genai: GoogleGenAI | null = null;
+function getGenAI(): GoogleGenAI | null {
+  if (!process.env.GEMINI_API_KEY) return null;
+  if (!genai) genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  return genai;
+}
+
+async function askGemini(prompt: string): Promise<string> {
+  const ai = getGenAI();
+  if (!ai) throw new Error("GEMINI_API_KEY non configuré");
+  const result = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: prompt,
+  });
+  return result.text?.trim() || "Pas de réponse.";
+}
 
 let client: Client | null = null;
 let gatewayReady = false;
@@ -486,6 +504,66 @@ const slashCommands = [
     .addStringOption((o) =>
       o.setName("activite").setDescription("Activité affichée (optionnel)").setRequired(false)
     ),
+
+  // ── IA & Utilitaires ──
+  new SlashCommandBuilder()
+    .setName("ask")
+    .setDescription("Pose une question directement à l'IA Nexus")
+    .addStringOption((o) =>
+      o.setName("question").setDescription("Ta question pour Nexus AI").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("code")
+    .setDescription("Demande de l'aide pour du code à l'IA")
+    .addStringOption((o) =>
+      o.setName("demande").setDescription("Ton problème ou ta question de code").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("traduction")
+    .setDescription("Traduit un texte dans la langue de ton choix")
+    .addStringOption((o) =>
+      o.setName("texte").setDescription("Le texte à traduire").setRequired(true)
+    )
+    .addStringOption((o) =>
+      o.setName("langue").setDescription("Langue cible (ex: anglais, espagnol, japonais)").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("resume")
+    .setDescription("Résume un texte long en quelques phrases")
+    .addStringOption((o) =>
+      o.setName("texte").setDescription("Le texte à résumer").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("meteo")
+    .setDescription("Donne la météo actuelle d'une ville (via IA)")
+    .addStringOption((o) =>
+      o.setName("ville").setDescription("La ville souhaitée").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("roast")
+    .setDescription("Demande à l'IA de roast quelqu'un (gentiment)")
+    .addUserOption((o) =>
+      o.setName("cible").setDescription("La personne à roast").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("compliment")
+    .setDescription("L'IA génère un compliment pour quelqu'un")
+    .addUserOption((o) =>
+      o.setName("cible").setDescription("La personne à complimenter").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("histoire")
+    .setDescription("L'IA invente une courte histoire sur un thème")
+    .addStringOption((o) =>
+      o.setName("theme").setDescription("Le thème de l'histoire").setRequired(true)
+    ),
 ].map((cmd) => cmd.toJSON());
 
 // ── Register slash commands ────────────────────────────────────────────────────
@@ -612,11 +690,12 @@ async function handleInteraction(interaction: any) {
             .setColor(0x5865f2)
             .setTitle("📖 Ce que je sais faire")
             .addFields(
+              { name: "🤖 Intelligence Artificielle", value: "`/ask` `/code` `/traduction` `/resume` `/meteo` `/roast` `/compliment` `/histoire`" },
               { name: "📊 Informations", value: "`/ping` `/botinfo` `/uptime` `/serverinfo` `/userinfo` `/avatar` `/banner` `/rolelist` `/channellist` `/membercount`" },
               { name: "🎉 Fun", value: "`/coinflip` `/roll` `/8ball` `/choix` `/pp` `/hug` `/slap` `/iq` `/niveau` `/mdr`" },
               { name: "📢 Communication", value: "`/embed` `/poll` `/announce`" },
               { name: "🔨 Modération", value: "`/ban` `/kick` `/mute` `/unmute` `/warn` `/warns` `/clearwarns` `/clear` `/slowmode` `/lock` `/unlock` `/role` `/nick` `/unban` `/banlist`" },
-              { name: "👑 Owner uniquement", value: "`/say` `/backup`" }
+              { name: "👑 Owner uniquement", value: "`/say` `/backup` `/ghostping` `/status`" }
             )
             .setFooter({ text: "Tu peux aussi me mentionner pour un raccourci !" })
             .setTimestamp(),
@@ -1494,6 +1573,197 @@ async function handleInteraction(interaction: any) {
       await interaction.reply({ content: `✅ Statut changé en **${presence}**${activite ? ` avec l'activité **${activite}**` : ""}.`, ephemeral: true });
     }
 
+    // ── ask ──
+    else if (commandName === "ask") {
+      await interaction.deferReply();
+      const question = interaction.options.getString("question", true);
+      try {
+        const answer = await askGemini(question);
+        const trimmed = answer.length > 4000 ? answer.slice(0, 3997) + "..." : answer;
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x5865f2)
+              .setTitle("🤖 Nexus AI")
+              .setDescription(trimmed)
+              .setFooter({ text: `Question de ${interaction.user.username}` })
+              .setTimestamp(),
+          ],
+        });
+      } catch {
+        await interaction.editReply({ content: "❌ Nexus AI n'est pas disponible (GEMINI_API_KEY manquant ou erreur)." });
+      }
+    }
+
+    // ── code ──
+    else if (commandName === "code") {
+      await interaction.deferReply();
+      const demande = interaction.options.getString("demande", true);
+      try {
+        const answer = await askGemini(
+          `Tu es un expert en programmation. Réponds de façon concise et avec des exemples de code si utile. Question: ${demande}`
+        );
+        const trimmed = answer.length > 4000 ? answer.slice(0, 3997) + "..." : answer;
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x00b4d8)
+              .setTitle("💻 Aide au code")
+              .setDescription(trimmed)
+              .setFooter({ text: `Demande de ${interaction.user.username}` })
+              .setTimestamp(),
+          ],
+        });
+      } catch {
+        await interaction.editReply({ content: "❌ Nexus AI n'est pas disponible." });
+      }
+    }
+
+    // ── traduction ──
+    else if (commandName === "traduction") {
+      await interaction.deferReply();
+      const texte = interaction.options.getString("texte", true);
+      const langue = interaction.options.getString("langue", true);
+      try {
+        const answer = await askGemini(
+          `Traduis le texte suivant en ${langue}. Donne uniquement la traduction, sans explication : "${texte}"`
+        );
+        const trimmed = answer.length > 4000 ? answer.slice(0, 3997) + "..." : answer;
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xf4a261)
+              .setTitle(`🌍 Traduction → ${langue}`)
+              .addFields(
+                { name: "Original", value: texte.length > 1024 ? texte.slice(0, 1021) + "..." : texte },
+                { name: "Traduction", value: trimmed }
+              )
+              .setFooter({ text: `Demandé par ${interaction.user.username}` })
+              .setTimestamp(),
+          ],
+        });
+      } catch {
+        await interaction.editReply({ content: "❌ Nexus AI n'est pas disponible." });
+      }
+    }
+
+    // ── resume ──
+    else if (commandName === "resume") {
+      await interaction.deferReply();
+      const texte = interaction.options.getString("texte", true);
+      try {
+        const answer = await askGemini(
+          `Résume ce texte en 3-5 phrases maximum, de façon claire et concise : "${texte}"`
+        );
+        const trimmed = answer.length > 4000 ? answer.slice(0, 3997) + "..." : answer;
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x90e0ef)
+              .setTitle("📝 Résumé")
+              .setDescription(trimmed)
+              .setFooter({ text: `Demandé par ${interaction.user.username}` })
+              .setTimestamp(),
+          ],
+        });
+      } catch {
+        await interaction.editReply({ content: "❌ Nexus AI n'est pas disponible." });
+      }
+    }
+
+    // ── meteo ──
+    else if (commandName === "meteo") {
+      await interaction.deferReply();
+      const ville = interaction.options.getString("ville", true);
+      try {
+        const answer = await askGemini(
+          `Donne une réponse courte et sympa sur la météo typique et actuelle (saison, climat) de la ville "${ville}". Maximum 3 phrases. Commence par un emoji météo.`
+        );
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x48cae4)
+              .setTitle(`🌤️ Météo — ${ville}`)
+              .setDescription(answer)
+              .setFooter({ text: "Données générées par Nexus AI — vérifier pour la météo en temps réel" })
+              .setTimestamp(),
+          ],
+        });
+      } catch {
+        await interaction.editReply({ content: "❌ Nexus AI n'est pas disponible." });
+      }
+    }
+
+    // ── roast ──
+    else if (commandName === "roast") {
+      await interaction.deferReply();
+      const cible = interaction.options.getUser("cible", true);
+      try {
+        const answer = await askGemini(
+          `Fais un roast humoristique et amical de quelqu'un qui s'appelle "${cible.username}". Maximum 3 phrases, bien écrit, drôle mais jamais méchant. En français.`
+        );
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xed4245)
+              .setTitle(`🔥 Roast de ${cible.username}`)
+              .setDescription(answer)
+              .setFooter({ text: `Commandé par ${interaction.user.username}` })
+              .setTimestamp(),
+          ],
+        });
+      } catch {
+        await interaction.editReply({ content: "❌ Nexus AI n'est pas disponible." });
+      }
+    }
+
+    // ── compliment ──
+    else if (commandName === "compliment") {
+      await interaction.deferReply();
+      const cible = interaction.options.getUser("cible", true);
+      try {
+        const answer = await askGemini(
+          `Génère un compliment chaleureux et sincère pour quelqu'un qui s'appelle "${cible.username}". 2 phrases maximum, en français.`
+        );
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xff90e8)
+              .setTitle(`💖 Compliment pour ${cible.username}`)
+              .setDescription(answer)
+              .setFooter({ text: `Offert par ${interaction.user.username}` })
+              .setTimestamp(),
+          ],
+        });
+      } catch {
+        await interaction.editReply({ content: "❌ Nexus AI n'est pas disponible." });
+      }
+    }
+
+    // ── histoire ──
+    else if (commandName === "histoire") {
+      await interaction.deferReply();
+      const theme = interaction.options.getString("theme", true);
+      try {
+        const answer = await askGemini(
+          `Invente une courte histoire originale et captivante sur le thème : "${theme}". Maximum 10 phrases. En français.`
+        );
+        const trimmed = answer.length > 4000 ? answer.slice(0, 3997) + "..." : answer;
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xc77dff)
+              .setTitle(`📖 Histoire : ${theme}`)
+              .setDescription(trimmed)
+              .setFooter({ text: `Imaginé par Nexus AI pour ${interaction.user.username}` })
+              .setTimestamp(),
+          ],
+        });
+      } catch {
+        await interaction.editReply({ content: "❌ Nexus AI n'est pas disponible." });
+      }
+    }
+
   } catch (err: any) {
     console.error(`[Discord] Erreur sur /${commandName}:`, err.message);
     try {
@@ -1733,6 +2003,11 @@ export function initDiscordGateway(): Promise<void> {
   const botToken = process.env.DISCORD_BOT_TOKEN;
   if (!botToken) {
     console.log("[Discord] Bot token non configuré, gateway désactivé.");
+    return Promise.resolve();
+  }
+  // Prevent double-initialization (e.g. Vercel spawning a second container)
+  if (savedBotToken && (gatewayReady || isConnecting)) {
+    console.log("[Discord] Gateway déjà actif ou en cours d'init, skip.");
     return Promise.resolve();
   }
   savedBotToken = botToken;
