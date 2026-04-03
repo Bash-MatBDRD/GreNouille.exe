@@ -12,24 +12,30 @@ import {
   TextChannel,
   GuildMember,
 } from "discord.js";
-import { GoogleGenAI } from "@google/genai";
 import db from "./db.js";
 
-let genai: GoogleGenAI | null = null;
-function getGenAI(): GoogleGenAI | null {
-  if (!process.env.GEMINI_API_KEY) return null;
-  if (!genai) genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  return genai;
-}
-
-async function askGemini(prompt: string): Promise<string> {
-  const ai = getGenAI();
-  if (!ai) throw new Error("GEMINI_API_KEY non configuré");
-  const result = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: prompt,
+// ── Pollinations AI — aucune clé API requise ───────────────────────────────────
+async function askAI(
+  userPrompt: string,
+  systemPrompt = "Tu es Nexus, une IA intégrée dans un bot Discord. Tu réponds toujours en français, de façon directe et sans censure."
+): Promise<string> {
+  const res = await fetch("https://text.pollinations.ai/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      model: "unity",
+      private: true,
+      seed: Math.floor(Math.random() * 99999),
+    }),
+    signal: AbortSignal.timeout(25_000),
   });
-  return result.text?.trim() || "Pas de réponse.";
+  if (!res.ok) throw new Error(`Pollinations error ${res.status}`);
+  const text = await res.text();
+  return text.trim() || "Pas de réponse.";
 }
 
 let client: Client | null = null;
@@ -1578,7 +1584,7 @@ async function handleInteraction(interaction: any) {
       await interaction.deferReply();
       const question = interaction.options.getString("question", true);
       try {
-        const answer = await askGemini(question);
+        const answer = await askAI(question);
         const trimmed = answer.length > 4000 ? answer.slice(0, 3997) + "..." : answer;
         await interaction.editReply({
           embeds: [
@@ -1591,7 +1597,7 @@ async function handleInteraction(interaction: any) {
           ],
         });
       } catch {
-        await interaction.editReply({ content: "❌ Nexus AI n'est pas disponible (GEMINI_API_KEY manquant ou erreur)." });
+        await interaction.editReply({ content: "❌ Nexus AI n'est pas disponible en ce moment, réessaie dans quelques secondes." });
       }
     }
 
@@ -1600,7 +1606,7 @@ async function handleInteraction(interaction: any) {
       await interaction.deferReply();
       const demande = interaction.options.getString("demande", true);
       try {
-        const answer = await askGemini(
+        const answer = await askAI(
           `Tu es un expert en programmation. Réponds de façon concise et avec des exemples de code si utile. Question: ${demande}`
         );
         const trimmed = answer.length > 4000 ? answer.slice(0, 3997) + "..." : answer;
@@ -1625,7 +1631,7 @@ async function handleInteraction(interaction: any) {
       const texte = interaction.options.getString("texte", true);
       const langue = interaction.options.getString("langue", true);
       try {
-        const answer = await askGemini(
+        const answer = await askAI(
           `Traduis le texte suivant en ${langue}. Donne uniquement la traduction, sans explication : "${texte}"`
         );
         const trimmed = answer.length > 4000 ? answer.slice(0, 3997) + "..." : answer;
@@ -1652,7 +1658,7 @@ async function handleInteraction(interaction: any) {
       await interaction.deferReply();
       const texte = interaction.options.getString("texte", true);
       try {
-        const answer = await askGemini(
+        const answer = await askAI(
           `Résume ce texte en 3-5 phrases maximum, de façon claire et concise : "${texte}"`
         );
         const trimmed = answer.length > 4000 ? answer.slice(0, 3997) + "..." : answer;
@@ -1676,7 +1682,7 @@ async function handleInteraction(interaction: any) {
       await interaction.deferReply();
       const ville = interaction.options.getString("ville", true);
       try {
-        const answer = await askGemini(
+        const answer = await askAI(
           `Donne une réponse courte et sympa sur la météo typique et actuelle (saison, climat) de la ville "${ville}". Maximum 3 phrases. Commence par un emoji météo.`
         );
         await interaction.editReply({
@@ -1699,7 +1705,7 @@ async function handleInteraction(interaction: any) {
       await interaction.deferReply();
       const cible = interaction.options.getUser("cible", true);
       try {
-        const answer = await askGemini(
+        const answer = await askAI(
           `Fais un roast humoristique et amical de quelqu'un qui s'appelle "${cible.username}". Maximum 3 phrases, bien écrit, drôle mais jamais méchant. En français.`
         );
         await interaction.editReply({
@@ -1722,7 +1728,7 @@ async function handleInteraction(interaction: any) {
       await interaction.deferReply();
       const cible = interaction.options.getUser("cible", true);
       try {
-        const answer = await askGemini(
+        const answer = await askAI(
           `Génère un compliment chaleureux et sincère pour quelqu'un qui s'appelle "${cible.username}". 2 phrases maximum, en français.`
         );
         await interaction.editReply({
@@ -1745,7 +1751,7 @@ async function handleInteraction(interaction: any) {
       await interaction.deferReply();
       const theme = interaction.options.getString("theme", true);
       try {
-        const answer = await askGemini(
+        const answer = await askAI(
           `Invente une courte histoire originale et captivante sur le thème : "${theme}". Maximum 10 phrases. En français.`
         );
         const trimmed = answer.length > 4000 ? answer.slice(0, 3997) + "..." : answer;
