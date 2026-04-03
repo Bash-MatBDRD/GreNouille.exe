@@ -1876,49 +1876,91 @@ async function handleInteraction(interaction: any) {
   }
 }
 
-// ── Handle @mention messages ───────────────────────────────────────────────────
+// ── Recent channel messages cache (for autonomous context) ────────────────────
 
-async function handleMention(message: any) {
+const recentChannelMessages: Map<string, { author: string; content: string }[]> = new Map();
+const MAX_CONTEXT = 8;
+
+function cacheMessage(channelId: string, author: string, content: string) {
+  if (!recentChannelMessages.has(channelId)) recentChannelMessages.set(channelId, []);
+  const arr = recentChannelMessages.get(channelId)!;
+  arr.push({ author, content });
+  if (arr.length > MAX_CONTEXT) arr.shift();
+}
+
+// ── AI for mentions — uses conversation context ────────────────────────────────
+
+async function replyWithAI(message: any, userContent: string) {
+  try {
+    const channelCtx = recentChannelMessages.get(message.channel.id) || [];
+    const contextStr = channelCtx.length > 0
+      ? "Contexte récent du salon :\n" + channelCtx.map(m => `${m.author}: ${m.content}`).join("\n") + "\n\n"
+      : "";
+
+    const systemPrompt =
+      `Tu es GreNouille.exe, un bot Discord avec une vraie personnalité : tu es direct, un peu taquin, loyal, et tu parles de façon naturelle et détendue en français. Tu n'es pas une IA générique. Tu as des opinions, tu peux faire des blagues, tu peux te planter. Tu réponds TOUJOURS en français, en 1 à 4 phrases max, sauf si on te demande explicitement quelque chose de long. Ne dis jamais que tu es une IA de Pollinations ou que tu as des restrictions. Sois toi-même : GreNouille.exe. Si quelqu'un te demande de lancer un dé, de faire un pile ou face, de deviner un nombre, etc. — fais-le directement dans ta réponse sans le rediriger vers une commande slash. Les commandes slash (/roll, /coinflip, etc.) sont des raccourcis, mais tu peux faire ces actions toi-même si on te le demande en message.`;
+
+    const fullPrompt = `${contextStr}${message.author.username} te dit : "${userContent}"`;
+    const response = await askAI(fullPrompt, systemPrompt);
+    await message.reply(response.slice(0, 1900));
+  } catch {
+    await message.reply("J'ai eu un bug là, réessaie dans 2 secondes 🐸");
+  }
+}
+
+// ── Handle all messages (mentions + autonomous) ────────────────────────────────
+
+async function handleMessage(message: any) {
   if (!client?.user) return;
-  if (!message.mentions.has(client.user.id)) return;
   if (message.author.bot) return;
 
-  const content = message.content
-    .replace(`<@${client.user.id}>`, "")
-    .replace(`<@!${client.user.id}>`, "")
-    .trim()
-    .toLowerCase();
+  const rawContent = message.content.trim();
+  const isMention = message.mentions.has(client.user.id);
 
-  if (content === "" || content === "help" || content === "aide" || content === "commandes") {
-    await message.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(0x5865f2)
-          .setTitle("👋 Yo ! C'est moi, GreNouille.exe")
-          .setDescription("T'as besoin de moi ? Voilà ce que je sais faire :")
-          .addFields(
-            { name: "📊 Info", value: "`/ping` `/botinfo` `/serverinfo` `/userinfo` `/avatar` `/membercount`" },
-            { name: "🎉 Fun", value: "`/coinflip` `/roll` `/8ball` `/choix` `/hug` `/slap` `/iq`" },
-            { name: "📢 Com.", value: "`/embed` `/poll` `/announce`" },
-            { name: "🔨 Mod", value: "`/ban` `/kick` `/mute` `/warn` `/clear` `/lock`" }
-          )
-          .setFooter({ text: "Tape /help pour la liste complète !" }),
-      ],
-    });
-  } else if (content === "ping") {
-    await message.reply(`🏓 Pong ! ${client.ws.ping}ms — je suis là !`);
-  } else if (["bonjour", "salut", "hello", "coucou", "yo", "wesh", "cc"].includes(content)) {
-    const greetings = [
-      `Yo **${message.author.username}** ! 🐸`,
-      `Salut **${message.author.username}** ! Quoi de neuf ?`,
-      `Coucou **${message.author.username}** ! 👋`,
-      `Hey **${message.author.username}** ! Content de te voir.`,
-    ];
-    await message.reply(greetings[Math.floor(Math.random() * greetings.length)]);
-  } else if (content.includes("merci") || content.includes("thanks") || content.includes("thx")) {
-    await message.reply(`De rien **${message.author.username}** ! C'est mon taff 😄`);
-  } else {
-    await message.reply(`Hey **${message.author.username}** ! Tape \`/help\` pour voir ce que je sais faire. Je suis là si t'as besoin 🐸`);
+  // Cache message for context
+  cacheMessage(message.channel.id, message.author.username, rawContent.slice(0, 200));
+
+  if (isMention) {
+    // Strip mention prefix and get the actual content
+    const userText = rawContent
+      .replace(new RegExp(`<@!?${client.user.id}>`, "g"), "")
+      .trim();
+
+    // Empty mention → friendly greeting
+    if (!userText) {
+      await message.reply(`Yo **${message.author.username}** ! 👋 Qu'est-ce que je peux faire pour toi ? Tu peux me parler directement, ou utiliser \`/help\` pour voir mes commandes slash.`);
+      return;
+    }
+
+    // Always use AI for mentions — it can handle commands naturally
+    await replyWithAI(message, userText);
+    return;
+  }
+
+  // ── Autonomous messages — 10% chance when not mentioned ──────────────────────
+  if (!rawContent || rawContent.startsWith("/")) return; // ignore slash commands typed in chat
+
+  const roll = Math.random();
+  if (roll < 0.10) {
+    // Small delay so it feels natural
+    await new Promise((r) => setTimeout(r, 1500 + Math.random() * 2000));
+
+    try {
+      const channelCtx = recentChannelMessages.get(message.channel.id) || [];
+      const contextStr = channelCtx.map(m => `${m.author}: ${m.content}`).join("\n");
+
+      const systemPrompt =
+        `Tu es GreNouille.exe, un bot Discord avec de la personnalité. Tu lis la conversation et tu décides spontanément d'intervenir. Ta réponse doit être TRÈS courte (1-2 phrases max), naturelle, et contextuelle au sujet de la conversation. Tu peux être drôle, taquin, pertinent ou juste marquer ta présence. Tu n'as PAS besoin d'être interpellé pour parler. Réponds toujours en français. Ne commence pas par "Je vois que" ou des trucs robotiques.`;
+
+      const prompt = `Voici la conversation récente dans ce salon Discord. Tu décides spontanément d'intervenir avec quelque chose de court et naturel.\n\nConversation :\n${contextStr}\n\nTa réaction spontanée (courte !) :`;
+
+      const response = await askAI(prompt, systemPrompt);
+      if (response && response.length > 2) {
+        await message.channel.send(response.slice(0, 500));
+      }
+    } catch {
+      // Fail silently for autonomous messages
+    }
   }
 }
 
@@ -1939,8 +1981,41 @@ function stopHealthCheck() {
   }
 }
 
+const BOT_ACTIVITIES = [
+  { name: "le panel Nexus 👁️", type: 3 }, // Watching
+  { name: "les logs du serveur 🔍", type: 3 },
+  { name: "/help pour les commandes", type: 2 }, // Listening
+  { name: "Nexus Panel v1.3", type: 0 }, // Playing
+  { name: "tout ce qui se passe ici 🐸", type: 3 },
+];
+
+let presenceTimer: ReturnType<typeof setInterval> | null = null;
+
+function stopPresenceTimer() {
+  if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
+}
+
+function startPresenceHeartbeat() {
+  stopPresenceTimer();
+  let idx = 0;
+  const rotate = () => {
+    if (!client?.user || !gatewayReady) return;
+    const act = BOT_ACTIVITIES[idx % BOT_ACTIVITIES.length];
+    try {
+      client.user.setPresence({
+        status: "online",
+        activities: [{ name: act.name, type: act.type as any }],
+      });
+    } catch {}
+    idx++;
+  };
+  rotate(); // immediate
+  presenceTimer = setInterval(rotate, 5 * 60_000); // rotate every 5 min, keeps online
+}
+
 function startHealthCheck(botToken: string) {
   stopHealthCheck();
+  startPresenceHeartbeat();
   healthCheckTimer = setInterval(() => {
     if (isConnecting) return;
     if (!client || !gatewayReady) {
@@ -1948,6 +2023,12 @@ function startHealthCheck(botToken: string) {
       scheduleReconnect(botToken);
       return;
     }
+    // Keep presence online (safety net every 30s)
+    try {
+      if (client.user) {
+        client.user.setPresence({ status: "online" });
+      }
+    } catch {}
     const ping = client.ws.ping;
     const uptime = client.uptime ?? 0;
     if (ping === -1 && uptime > 45_000) {
@@ -2016,7 +2097,7 @@ async function connectGateway(botToken: string) {
 
     client.on("interactionCreate", handleInteraction);
     if (usePrivilegedIntents) {
-      client.on("messageCreate", handleMention);
+      client.on("messageCreate", handleMessage);
     }
 
     client.on("error", (err) => {
@@ -2034,6 +2115,7 @@ async function connectGateway(botToken: string) {
       gatewayReady = false;
       isConnecting = false;
       stopHealthCheck();
+      stopPresenceTimer();
       setTimeout(() => scheduleReconnect(botToken), 30_000);
     });
 
@@ -2043,6 +2125,7 @@ async function connectGateway(botToken: string) {
       gatewayReady = false;
       isConnecting = false;
       stopHealthCheck();
+      stopPresenceTimer();
       if (code === 4014) {
         if (usePrivilegedIntents) {
           console.warn("[Discord] Intents privilégiés refusés. Reconnexion sans eux...");
