@@ -493,7 +493,7 @@ export default function Dashboard() {
                         <w.icon className="h-4 w-4" />
                         {w.label}
                       </div>
-                      <button onClick={() => removeWidget(wid)} className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20">
+                      <button onClick={() => removeWidget(wid)} className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/10 text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-500/20 active:scale-90">
                         <X className="h-3 w-3" />
                       </button>
                     </div>

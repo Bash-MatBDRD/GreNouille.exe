@@ -1626,14 +1626,17 @@ async function connectGateway(botToken: string) {
   }
 }
 
-export async function initDiscordGateway() {
+export function initDiscordGateway(): Promise<void> {
   const botToken = process.env.DISCORD_BOT_TOKEN;
   if (!botToken) {
     console.log("[Discord] Bot token not configured, skipping gateway init.");
-    return;
+    return Promise.resolve();
   }
   reconnectAttempts = 0;
-  await connectGateway(botToken);
+  connectGateway(botToken).catch((err) =>
+    console.error("[Discord] Gateway init failed:", err?.message ?? err)
+  );
+  return Promise.resolve();
 }
 
 export function getDiscordClient(): Client | null {
