@@ -59,13 +59,16 @@ export const authenticateToken = async (req: any, res: any, next: any) => {
     if (meta.twoFactorEnabled !== undefined && dbUser.twoFactorEnabled !== (meta.twoFactorEnabled ? 1 : 0)) {
       updates.push("twoFactorEnabled = ?"); vals.push(meta.twoFactorEnabled ? 1 : 0);
     }
-    if (meta.spotifyAccessToken && !dbUser.spotifyAccessToken) {
+    const supabaseExpiry = Number(meta.spotifyTokenExpiry) || 0;
+    const dbExpiry = Number(dbUser.spotifyTokenExpiry) || 0;
+    const supabaseHasNewerToken = meta.spotifyAccessToken && supabaseExpiry > dbExpiry;
+    if (meta.spotifyAccessToken && (!dbUser.spotifyAccessToken || supabaseHasNewerToken)) {
       updates.push("spotifyAccessToken = ?"); vals.push(meta.spotifyAccessToken);
     }
-    if (meta.spotifyRefreshToken && !dbUser.spotifyRefreshToken) {
+    if (meta.spotifyRefreshToken && (!dbUser.spotifyRefreshToken || supabaseHasNewerToken)) {
       updates.push("spotifyRefreshToken = ?"); vals.push(meta.spotifyRefreshToken);
     }
-    if (meta.spotifyTokenExpiry && !dbUser.spotifyTokenExpiry) {
+    if (meta.spotifyTokenExpiry && (!dbUser.spotifyTokenExpiry || supabaseHasNewerToken)) {
       updates.push("spotifyTokenExpiry = ?"); vals.push(meta.spotifyTokenExpiry);
     }
     if (updates.length > 0) {

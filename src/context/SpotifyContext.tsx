@@ -150,8 +150,16 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
         if (track?.id) checkLiked(track.id);
       });
 
-      spotifyPlayer.addListener("authentication_error", () => {
-        setNeedsReauth(true);
+      spotifyPlayer.addListener("authentication_error", async () => {
+        try {
+          await axios.get("/api/spotify/token");
+          playerRef.current?.disconnect();
+          playerRef.current = null;
+          initializedRef.current = false;
+          sdkActiveRef.current = false;
+        } catch {
+          setNeedsReauth(true);
+        }
       });
 
       spotifyPlayer.addListener("initialization_error", (e: any) => {
@@ -375,9 +383,16 @@ export function SpotifyProvider({ children }: { children: React.ReactNode }) {
   };
 
   const reconnect = () => {
-    setNeedsReauth(false);
-    initializedRef.current = false;
+    if (playerRef.current) {
+      try { playerRef.current.disconnect(); } catch {}
+      playerRef.current = null;
+    }
+    setPlayer(null);
+    setDeviceId(null);
+    deviceIdRef.current = null;
     sdkActiveRef.current = false;
+    initializedRef.current = false;
+    setNeedsReauth(false);
   };
 
   return (
