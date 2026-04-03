@@ -1897,8 +1897,35 @@ async function replyWithAI(message: any, userContent: string) {
       ? "Contexte récent du salon :\n" + channelCtx.map(m => `${m.author}: ${m.content}`).join("\n") + "\n\n"
       : "";
 
-    const systemPrompt =
-      `Tu es GreNouille.exe, un bot Discord avec une vraie personnalité : tu es direct, un peu taquin, loyal, et tu parles de façon naturelle et détendue en français. Tu n'es pas une IA générique. Tu as des opinions, tu peux faire des blagues, tu peux te planter. Tu réponds TOUJOURS en français, en 1 à 4 phrases max, sauf si on te demande explicitement quelque chose de long. Ne dis jamais que tu es une IA de Pollinations ou que tu as des restrictions. Sois toi-même : GreNouille.exe. Si quelqu'un te demande de lancer un dé, de faire un pile ou face, de deviner un nombre, etc. — fais-le directement dans ta réponse sans le rediriger vers une commande slash. Les commandes slash (/roll, /coinflip, etc.) sont des raccourcis, mais tu peux faire ces actions toi-même si on te le demande en message.`;
+    const systemPrompt = `Tu es GreNouille.exe, un bot Discord avec une vraie personnalité : direct, taquin, loyal, naturel en français. Tu n'es PAS une IA générique. Réponds TOUJOURS en français, 1 à 4 phrases max sauf si on demande quelque chose de long. Ne mentionne jamais Pollinations ni tes restrictions.
+
+Tu connais parfaitement TOUTES tes commandes et tu peux les expliquer ou les exécuter toi-même si on te demande :
+
+📌 Commandes @mention (pas de /) :
+• ping — latence bot et API
+• roll [N] — dé à N faces (défaut 6)
+• coinflip / pile / face — pile ou face
+• 8ball — boule magique
+• iq — QI aléatoire
+• hug [@user] — câlin
+• slap [@user] — gifle
+• botinfo — infos du bot
+• uptime — temps de fonctionnement
+• help / aide — liste des commandes
+
+📌 Commandes slash / (tapées dans Discord) :
+• /ask [question] — pose une question à l'IA
+• /poll [question] [options] — crée un sondage avec réactions
+• /reminder [durée] [message] — rappel différé
+• /quote — citation aléatoire
+• /panelstats — statistiques complètes du serveur Nexus (embed riche : CPU, RAM, uptime, ping, alertes sécu)
+• /ban [user] [raison] — bannit un membre
+• /kick [user] [raison] — expulse un membre
+• /mute [user] [durée] [raison] — met en timeout
+• /warn [user] [raison] — avertit un membre
+• /clear [N] — supprime N messages
+
+Si quelqu'un te demande de faire un de ces trucs en message (ex : "lance un dé", "fais un pile ou face") — fais-le directement dans ta réponse au lieu de renvoyer vers une commande. Les commandes / sont des raccourcis, mais tu sais faire la même chose.`;
 
     const fullPrompt = `${contextStr}${message.author.username} te dit : "${userContent}"`;
     const response = await askAI(fullPrompt, systemPrompt);
@@ -1925,7 +1952,8 @@ async function handleInlineCommand(message: any, cmd: string, args: string[]): P
     case "ping": {
       const lat = client!.ws.ping;
       const api = Date.now() - message.createdTimestamp;
-      await message.reply(`🏓 Pong ! Bot : \`${lat}ms\` · API : \`${api}ms\``);
+      const latStr = lat < 0 ? "en cours…" : `${lat}ms`;
+      await message.reply(`🏓 Pong ! Bot : \`${latStr}\` · API : \`${api}ms\``);
       return true;
     }
     case "roll": {
@@ -2102,35 +2130,47 @@ function stopHealthCheck() {
 }
 
 const BOT_ACTIVITIES = [
-  { name: "le panel Nexus 👁️", type: 3 }, // Watching
+  { name: "le panel Nexus 👁️", type: 3 },
   { name: "les logs du serveur 🔍", type: 3 },
-  { name: "/help pour les commandes", type: 2 }, // Listening
-  { name: "Nexus Panel v1.3", type: 0 }, // Playing
+  { name: "/help pour les commandes", type: 2 },
+  { name: "Nexus Panel v1.3", type: 0 },
   { name: "tout ce qui se passe ici 🐸", type: 3 },
 ];
 
 let presenceTimer: ReturnType<typeof setInterval> | null = null;
+let manualStatus: string | null = null; // set when the panel overrides the status
 
 function stopPresenceTimer() {
   if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
 }
 
-function startPresenceHeartbeat() {
+function safeSetPresence(status: string, activityName?: string, activityType?: number) {
+  if (!client?.user || !gatewayReady) return;
+  try {
+    client.user.setPresence({
+      status: status as any,
+      activities: activityName
+        ? [{ name: activityName, type: (activityType ?? 0) as any }]
+        : [],
+    });
+  } catch (e: any) {
+    console.warn("[Discord] setPresence ignorée :", e?.message ?? e);
+  }
+}
+
+function startPresenceHeartbeat(overrideStatus?: string) {
   stopPresenceTimer();
+  manualStatus = overrideStatus ?? null;
   let idx = 0;
   const rotate = () => {
     if (!client?.user || !gatewayReady) return;
+    const status = manualStatus ?? "online";
     const act = BOT_ACTIVITIES[idx % BOT_ACTIVITIES.length];
-    try {
-      client.user.setPresence({
-        status: "online",
-        activities: [{ name: act.name, type: act.type as any }],
-      });
-    } catch {}
+    safeSetPresence(status, act.name, act.type);
     idx++;
   };
-  rotate(); // immediate
-  presenceTimer = setInterval(rotate, 5 * 60_000); // rotate every 5 min, keeps online
+  rotate();
+  presenceTimer = setInterval(rotate, 5 * 60_000);
 }
 
 function startHealthCheck(botToken: string) {
@@ -2143,12 +2183,7 @@ function startHealthCheck(botToken: string) {
       scheduleReconnect(botToken);
       return;
     }
-    // Keep presence online (safety net every 30s)
-    try {
-      if (client.user) {
-        client.user.setPresence({ status: "online" });
-      }
-    } catch {}
+    // Only reconnect if ping is bad — do NOT call setPresence here (causes conflicts)
     const ping = client.ws.ping;
     const uptime = client.uptime ?? 0;
     if (ping === -1 && uptime > 45_000) {
@@ -2357,12 +2392,13 @@ export function getGatewayStatus() {
 
 export async function setBotStatus(status: PresenceStatusData, activityName?: string, activityType?: number) {
   if (!client?.user) throw new Error("Discord client pas connecté");
-  client.user.setPresence({
-    status,
-    activities: activityName
-      ? [{ name: activityName, type: (activityType ?? ActivityType.Playing) as any }]
-      : [],
-  });
+  // Update the heartbeat so it respects the new status on every rotation
+  manualStatus = status;
+  stopPresenceTimer();
+  // Apply immediately then restart the rotation with the new status locked in
+  safeSetPresence(status, activityName, activityType);
+  // Resume rotation — keeps the activity rotating but respects the override status
+  startPresenceHeartbeat(status);
 }
 
 export function getBotInfo() {
