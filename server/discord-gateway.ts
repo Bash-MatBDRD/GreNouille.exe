@@ -11,6 +11,7 @@ import {
   ChannelType,
   TextChannel,
   GuildMember,
+  MessageFlags,
 } from "discord.js";
 import db from "./db.js";
 
@@ -552,6 +553,9 @@ async function registerSlashCommands(botToken: string, clientId: string) {
   const rest = new REST({ version: "10" }).setToken(botToken);
   const guildId = process.env.DISCORD_GUILD_ID;
   try {
+    // Purge toutes les commandes globales pour éviter les doublons fantômes
+    await rest.put(Routes.applicationCommands(clientId), { body: [] });
+    console.log("[Discord] Anciennes commandes globales purgées.");
     if (guildId) {
       await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: slashCommands });
       console.log(`[Discord] Slash commands enregistrées pour le serveur ${guildId}`);
@@ -685,7 +689,7 @@ async function handleInteraction(interaction: any) {
 
     // ── serverinfo ──
     else if (commandName === "serverinfo") {
-      if (!guild) return interaction.reply({ content: "Cette commande marche seulement dans un serveur.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Cette commande marche seulement dans un serveur.", flags: MessageFlags.Ephemeral });
       const owner = await guild.fetchOwner();
       const created = Math.floor(guild.createdTimestamp / 1000);
       await interaction.reply({
@@ -755,7 +759,7 @@ async function handleInteraction(interaction: any) {
       const fetched = await targetUser.fetch();
       const bannerUrl = (fetched as any).bannerURL?.({ size: 512 });
       if (!bannerUrl) {
-        return interaction.reply({ content: `**${targetUser.username}** a pas de bannière, dommage.`, ephemeral: true });
+        return interaction.reply({ content: `**${targetUser.username}** a pas de bannière, dommage.`, flags: MessageFlags.Ephemeral });
       }
       await interaction.reply({
         embeds: [
@@ -769,7 +773,7 @@ async function handleInteraction(interaction: any) {
 
     // ── rolelist ──
     else if (commandName === "rolelist") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const roles = guild.roles.cache
         .filter((r: any) => r.id !== guild.id)
         .sort((a: any, b: any) => b.position - a.position)
@@ -788,7 +792,7 @@ async function handleInteraction(interaction: any) {
 
     // ── channellist ──
     else if (commandName === "channellist") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const text = guild.channels.cache.filter((c: any) => c.type === ChannelType.GuildText).map((c: any) => `<#${c.id}>`).slice(0, 20).join(", ");
       const voice = guild.channels.cache.filter((c: any) => c.type === ChannelType.GuildVoice).map((c: any) => `🔊 ${c.name}`).slice(0, 10).join(", ");
       await interaction.reply({
@@ -806,7 +810,7 @@ async function handleInteraction(interaction: any) {
 
     // ── membercount ──
     else if (commandName === "membercount") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const bots = guild.members.cache.filter((m: any) => m.user.bot).size;
       const humans = guild.memberCount - bots;
       await interaction.reply({
@@ -858,7 +862,7 @@ async function handleInteraction(interaction: any) {
     else if (commandName === "choix") {
       const rawOptions = interaction.options.getString("options", true);
       const choices = rawOptions.split(",").map((s: string) => s.trim()).filter(Boolean);
-      if (choices.length < 2) return interaction.reply({ content: "Donne-moi au moins 2 options séparées par des virgules stp !", ephemeral: true });
+      if (choices.length < 2) return interaction.reply({ content: "Donne-moi au moins 2 options séparées par des virgules stp !", flags: MessageFlags.Ephemeral });
       const chosen = choices[Math.floor(Math.random() * choices.length)];
       await interaction.reply({
         embeds: [
@@ -925,11 +929,11 @@ async function handleInteraction(interaction: any) {
     // ── say (OWNER ONLY) ──
     else if (commandName === "say") {
       if (!isOwner) {
-        return interaction.reply({ content: "Cette commande c'est pas pour toi.", ephemeral: true });
+        return interaction.reply({ content: "Cette commande c'est pas pour toi.", flags: MessageFlags.Ephemeral });
       }
       const message = interaction.options.getString("message", true);
       const channel = (interaction.options.getChannel("salon") ?? interaction.channel) as TextChannel;
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       await channel.send(message);
       await interaction.deleteReply();
     }
@@ -949,7 +953,7 @@ async function handleInteraction(interaction: any) {
             .setTimestamp(),
         ],
       });
-      await interaction.reply({ content: "✅ Envoyé !", ephemeral: true });
+      await interaction.reply({ content: "✅ Envoyé !", flags: MessageFlags.Ephemeral });
     }
 
     // ── poll ──
@@ -985,7 +989,7 @@ async function handleInteraction(interaction: any) {
         for (let i = 0; i < opts.length; i++) await pollMsg.react(emojis[i]);
       }
 
-      await interaction.reply({ content: "✅ Sondage lancé !", ephemeral: true });
+      await interaction.reply({ content: "✅ Sondage lancé !", flags: MessageFlags.Ephemeral });
     }
 
     // ── announce ──
@@ -1002,14 +1006,14 @@ async function handleInteraction(interaction: any) {
             .setTimestamp(),
         ],
       });
-      await interaction.reply({ content: "✅ Annonce envoyée !", ephemeral: true });
+      await interaction.reply({ content: "✅ Annonce envoyée !", flags: MessageFlags.Ephemeral });
     }
 
     // ── ban ──
     else if (commandName === "ban") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getMember("membre") as GuildMember | null;
-      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", ephemeral: true });
+      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", flags: MessageFlags.Ephemeral });
       const raison = interaction.options.getString("raison") ?? "Aucune raison fournie";
       const supprimer = interaction.options.getInteger("supprimer") ?? 0;
       await guild.members.ban(target, { reason: raison, deleteMessageSeconds: supprimer * 86400 });
@@ -1029,9 +1033,9 @@ async function handleInteraction(interaction: any) {
 
     // ── kick ──
     else if (commandName === "kick") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getMember("membre") as GuildMember | null;
-      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", ephemeral: true });
+      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", flags: MessageFlags.Ephemeral });
       const raison = interaction.options.getString("raison") ?? "Aucune raison fournie";
       await target.kick(raison);
       await interaction.reply({
@@ -1050,9 +1054,9 @@ async function handleInteraction(interaction: any) {
 
     // ── mute ──
     else if (commandName === "mute") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getMember("membre") as GuildMember | null;
-      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", ephemeral: true });
+      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", flags: MessageFlags.Ephemeral });
       const duree = interaction.options.getInteger("duree", true);
       const raison = interaction.options.getString("raison") ?? "Aucune raison fournie";
       const until = new Date(Date.now() + duree * 60 * 1000);
@@ -1074,9 +1078,9 @@ async function handleInteraction(interaction: any) {
 
     // ── unmute ──
     else if (commandName === "unmute") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getMember("membre") as GuildMember | null;
-      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", ephemeral: true });
+      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", flags: MessageFlags.Ephemeral });
       await target.timeout(null);
       await interaction.reply({
         embeds: [
@@ -1090,9 +1094,9 @@ async function handleInteraction(interaction: any) {
 
     // ── warn ──
     else if (commandName === "warn") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getMember("membre") as GuildMember | null;
-      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", ephemeral: true });
+      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", flags: MessageFlags.Ephemeral });
       const raison = interaction.options.getString("raison", true);
       db.prepare(
         "INSERT INTO discord_warnings (guildId, userId, username, reason, warnedBy) VALUES (?, ?, ?, ?, ?)"
@@ -1114,9 +1118,9 @@ async function handleInteraction(interaction: any) {
 
     // ── warns ──
     else if (commandName === "warns") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getMember("membre") as GuildMember | null;
-      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", ephemeral: true });
+      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", flags: MessageFlags.Ephemeral });
       const rows = db.prepare("SELECT * FROM discord_warnings WHERE guildId = ? AND userId = ? ORDER BY createdAt DESC").all(guild.id, target.user.id) as any[];
       if (rows.length === 0) {
         return interaction.reply({ content: `✅ Aucun warn pour **${target.user.tag}**, il est clean.` });
@@ -1134,9 +1138,9 @@ async function handleInteraction(interaction: any) {
 
     // ── clearwarns ──
     else if (commandName === "clearwarns") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getMember("membre") as GuildMember | null;
-      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", ephemeral: true });
+      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", flags: MessageFlags.Ephemeral });
       db.prepare("DELETE FROM discord_warnings WHERE guildId = ? AND userId = ?").run(guild.id, target.user.id);
       await interaction.reply({
         embeds: [
@@ -1150,11 +1154,11 @@ async function handleInteraction(interaction: any) {
 
     // ── clear ──
     else if (commandName === "clear") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const nombre = interaction.options.getInteger("nombre", true);
       const targetUser = interaction.options.getUser("membre");
       const channel = interaction.channel as TextChannel;
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       let messages = await channel.messages.fetch({ limit: Math.min(nombre + 1, 100) });
       if (targetUser) messages = messages.filter((m: any) => m.author.id === targetUser.id);
       const toDelete = messages.filter((m: any) => Date.now() - m.createdTimestamp < 14 * 24 * 60 * 60 * 1000);
@@ -1164,7 +1168,7 @@ async function handleInteraction(interaction: any) {
 
     // ── slowmode ──
     else if (commandName === "slowmode") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const secondes = interaction.options.getInteger("secondes", true);
       const channel = interaction.channel as TextChannel;
       await channel.setRateLimitPerUser(secondes);
@@ -1174,7 +1178,7 @@ async function handleInteraction(interaction: any) {
 
     // ── lock ──
     else if (commandName === "lock") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const channel = (interaction.options.getChannel("salon") ?? interaction.channel) as TextChannel;
       await channel.permissionOverwrites.edit(guild.roles.everyone, { SendMessages: false });
       await interaction.reply({ content: `🔒 **${channel.name}** est verrouillé. Plus personne écrit ici.` });
@@ -1182,7 +1186,7 @@ async function handleInteraction(interaction: any) {
 
     // ── unlock ──
     else if (commandName === "unlock") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const channel = (interaction.options.getChannel("salon") ?? interaction.channel) as TextChannel;
       await channel.permissionOverwrites.edit(guild.roles.everyone, { SendMessages: null });
       await interaction.reply({ content: `🔓 **${channel.name}** est déverrouillé. On peut parler de nouveau !` });
@@ -1190,10 +1194,10 @@ async function handleInteraction(interaction: any) {
 
     // ── role ──
     else if (commandName === "role") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getMember("membre") as GuildMember | null;
       const role = interaction.options.getRole("role");
-      if (!target || !role) return interaction.reply({ content: "Membre ou rôle introuvable.", ephemeral: true });
+      if (!target || !role) return interaction.reply({ content: "Membre ou rôle introuvable.", flags: MessageFlags.Ephemeral });
       if (target.roles.cache.has(role.id)) {
         await target.roles.remove(role.id);
         await interaction.reply({ content: `✅ Rôle **${role.name}** retiré à **${target.user.tag}**.` });
@@ -1205,9 +1209,9 @@ async function handleInteraction(interaction: any) {
 
     // ── nick ──
     else if (commandName === "nick") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getMember("membre") as GuildMember | null;
-      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", ephemeral: true });
+      if (!target) return interaction.reply({ content: "Ce membre est introuvable.", flags: MessageFlags.Ephemeral });
       const surnom = interaction.options.getString("surnom") ?? null;
       await target.setNickname(surnom);
       const msg = surnom ? `Surnom de **${target.user.tag}** changé en **${surnom}**.` : `Surnom de **${target.user.tag}** supprimé.`;
@@ -1216,7 +1220,7 @@ async function handleInteraction(interaction: any) {
 
     // ── unban ──
     else if (commandName === "unban") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const userId = interaction.options.getString("userid", true);
       await guild.members.unban(userId);
       await interaction.reply({ content: `✅ L'utilisateur \`${userId}\` est débanni, il peut revenir.` });
@@ -1224,10 +1228,10 @@ async function handleInteraction(interaction: any) {
 
     // ── banlist ──
     else if (commandName === "banlist") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const bans = await guild.bans.fetch();
       if (bans.size === 0) {
-        return interaction.reply({ content: "✅ Personne de banni ici, tout le monde est sage.", ephemeral: true });
+        return interaction.reply({ content: "✅ Personne de banni ici, tout le monde est sage.", flags: MessageFlags.Ephemeral });
       }
       const list = bans.map((b: any) => `**${b.user.tag}** — ${b.reason ?? "Aucune raison"}`).slice(0, 20).join("\n");
       await interaction.reply({
@@ -1237,18 +1241,18 @@ async function handleInteraction(interaction: any) {
             .setTitle(`🔨 Membres bannis (${bans.size})`)
             .setDescription(list),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     // ── backup (OWNER ONLY) ──
     else if (commandName === "backup") {
       if (!isOwner) {
-        return interaction.reply({ content: "Cette commande est réservée au propriétaire du bot.", ephemeral: true });
+        return interaction.reply({ content: "Cette commande est réservée au propriétaire du bot.", flags: MessageFlags.Ephemeral });
       }
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
 
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       const [guildData, channelsData, rolesData, bansData, emojisData] = await Promise.all([
         guild.fetch(),
@@ -1340,7 +1344,7 @@ async function handleInteraction(interaction: any) {
       const msg = interaction.options.getString("message", true);
       const targetCh = (interaction.options.getChannel("salon") ?? interaction.channel) as TextChannel;
       await (targetCh as TextChannel).send(msg);
-      await interaction.reply({ content: `✅ Message envoyé dans <#${targetCh.id}>.`, ephemeral: true });
+      await interaction.reply({ content: `✅ Message envoyé dans <#${targetCh.id}>.`, flags: MessageFlags.Ephemeral });
     }
 
     // ── poll ──
@@ -1388,9 +1392,9 @@ async function handleInteraction(interaction: any) {
 
     // ── emojis ──
     else if (commandName === "emojis") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const emojis = guild.emojis.cache;
-      if (emojis.size === 0) return interaction.reply({ content: "Ce serveur n'a aucun emoji personnalisé.", ephemeral: true });
+      if (emojis.size === 0) return interaction.reply({ content: "Ce serveur n'a aucun emoji personnalisé.", flags: MessageFlags.Ephemeral });
       const list = emojis.map((e) => `${e} \`:${e.name}:\``).slice(0, 40).join(" ") + (emojis.size > 40 ? `\n*(+${emojis.size - 40} autres...)*` : "");
       const embed = new EmbedBuilder()
         .setColor(parseColor(null))
@@ -1401,9 +1405,9 @@ async function handleInteraction(interaction: any) {
 
     // ── stickers ──
     else if (commandName === "stickers") {
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const stickers = guild.stickers.cache;
-      if (stickers.size === 0) return interaction.reply({ content: "Ce serveur n'a aucun sticker personnalisé.", ephemeral: true });
+      if (stickers.size === 0) return interaction.reply({ content: "Ce serveur n'a aucun sticker personnalisé.", flags: MessageFlags.Ephemeral });
       const list = stickers.map((s) => `• **${s.name}**`).join("\n");
       const embed = new EmbedBuilder()
         .setColor(parseColor(null))
@@ -1414,59 +1418,59 @@ async function handleInteraction(interaction: any) {
 
     // ── nick (OWNER ONLY) ──
     else if (commandName === "nick") {
-      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", flags: MessageFlags.Ephemeral });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getUser("membre", true);
       const pseudo = interaction.options.getString("pseudo") ?? null;
       const guildMember = await guild.members.fetch(target.id).catch(() => null);
-      if (!guildMember) return interaction.reply({ content: "Membre introuvable.", ephemeral: true });
+      if (!guildMember) return interaction.reply({ content: "Membre introuvable.", flags: MessageFlags.Ephemeral });
       await guildMember.setNickname(pseudo);
-      await interaction.reply({ content: pseudo ? `✅ Pseudo de **${target.username}** changé en **${pseudo}**.` : `✅ Pseudo de **${target.username}** réinitialisé.`, ephemeral: true });
+      await interaction.reply({ content: pseudo ? `✅ Pseudo de **${target.username}** changé en **${pseudo}**.` : `✅ Pseudo de **${target.username}** réinitialisé.`, flags: MessageFlags.Ephemeral });
     }
 
     // ── addrole (OWNER ONLY) ──
     else if (commandName === "addrole") {
-      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", flags: MessageFlags.Ephemeral });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getUser("membre", true);
       const role = interaction.options.getRole("role", true);
       const guildMember = await guild.members.fetch(target.id).catch(() => null);
-      if (!guildMember) return interaction.reply({ content: "Membre introuvable.", ephemeral: true });
+      if (!guildMember) return interaction.reply({ content: "Membre introuvable.", flags: MessageFlags.Ephemeral });
       await guildMember.roles.add(role.id);
-      await interaction.reply({ content: `✅ Rôle **${role.name}** donné à **${target.username}**.`, ephemeral: true });
+      await interaction.reply({ content: `✅ Rôle **${role.name}** donné à **${target.username}**.`, flags: MessageFlags.Ephemeral });
     }
 
     // ── removerole (OWNER ONLY) ──
     else if (commandName === "removerole") {
-      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", flags: MessageFlags.Ephemeral });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getUser("membre", true);
       const role = interaction.options.getRole("role", true);
       const guildMember = await guild.members.fetch(target.id).catch(() => null);
-      if (!guildMember) return interaction.reply({ content: "Membre introuvable.", ephemeral: true });
+      if (!guildMember) return interaction.reply({ content: "Membre introuvable.", flags: MessageFlags.Ephemeral });
       await guildMember.roles.remove(role.id);
-      await interaction.reply({ content: `✅ Rôle **${role.name}** retiré de **${target.username}**.`, ephemeral: true });
+      await interaction.reply({ content: `✅ Rôle **${role.name}** retiré de **${target.username}**.`, flags: MessageFlags.Ephemeral });
     }
 
     // ── dm (OWNER ONLY) ──
     else if (commandName === "dm") {
-      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getUser("membre", true);
       const message = interaction.options.getString("message", true);
       try {
         await target.send(message);
-        await interaction.reply({ content: `✅ DM envoyé à **${target.username}**.`, ephemeral: true });
+        await interaction.reply({ content: `✅ DM envoyé à **${target.username}**.`, flags: MessageFlags.Ephemeral });
       } catch {
-        await interaction.reply({ content: `❌ Impossible d'envoyer un DM à **${target.username}**. Il a peut-être les DMs fermés.`, ephemeral: true });
+        await interaction.reply({ content: `❌ Impossible d'envoyer un DM à **${target.username}**. Il a peut-être les DMs fermés.`, flags: MessageFlags.Ephemeral });
       }
     }
 
     // ── nuke (OWNER ONLY) ──
     else if (commandName === "nuke") {
-      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", flags: MessageFlags.Ephemeral });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const targetCh = (interaction.options.getChannel("salon") ?? interaction.channel) as TextChannel;
-      await interaction.reply({ content: "💥 Nuking...", ephemeral: true });
+      await interaction.reply({ content: "💥 Nuking...", flags: MessageFlags.Ephemeral });
       const position = targetCh.position;
       const parent = targetCh.parentId;
       const name = targetCh.name;
@@ -1486,10 +1490,10 @@ async function handleInteraction(interaction: any) {
 
     // ── lockdown (OWNER ONLY) ──
     else if (commandName === "lockdown") {
-      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", flags: MessageFlags.Ephemeral });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const actif = interaction.options.getBoolean("actif", true);
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const channels = guild.channels.cache.filter((c) => c.type === ChannelType.GuildText);
       let count = 0;
       for (const [, ch] of channels) {
@@ -1503,11 +1507,11 @@ async function handleInteraction(interaction: any) {
 
     // ── massrole (OWNER ONLY) ──
     else if (commandName === "massrole") {
-      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
-      if (!guild) return interaction.reply({ content: "Serveur uniquement.", ephemeral: true });
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", flags: MessageFlags.Ephemeral });
+      if (!guild) return interaction.reply({ content: "Serveur uniquement.", flags: MessageFlags.Ephemeral });
       const role = interaction.options.getRole("role", true);
       const donner = interaction.options.getBoolean("donner", true);
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const members = await guild.members.fetch();
       let count = 0;
       for (const [, m] of members) {
@@ -1523,19 +1527,19 @@ async function handleInteraction(interaction: any) {
 
     // ── setslowmode (OWNER ONLY) ──
     else if (commandName === "setslowmode") {
-      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", flags: MessageFlags.Ephemeral });
       const secondes = interaction.options.getInteger("secondes", true);
       const targetCh = (interaction.options.getChannel("salon") ?? interaction.channel) as TextChannel;
       await (targetCh as any).setRateLimitPerUser(secondes);
-      await interaction.reply({ content: secondes === 0 ? `✅ Slowmode désactivé dans <#${targetCh.id}>.` : `✅ Slowmode de **${secondes}s** activé dans <#${targetCh.id}>.`, ephemeral: true });
+      await interaction.reply({ content: secondes === 0 ? `✅ Slowmode désactivé dans <#${targetCh.id}>.` : `✅ Slowmode de **${secondes}s** activé dans <#${targetCh.id}>.`, flags: MessageFlags.Ephemeral });
     }
 
     // ── ghostping (OWNER ONLY) ──
     else if (commandName === "ghostping") {
-      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", flags: MessageFlags.Ephemeral });
       const target = interaction.options.getUser("membre", true);
       const targetCh = (interaction.options.getChannel("salon") ?? interaction.channel) as TextChannel;
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const msg = await targetCh.send(`<@${target.id}>`);
       await msg.delete();
       await interaction.editReply({ content: `👻 Ghost ping envoyé à **${target.username}** dans <#${targetCh.id}>.` });
@@ -1543,14 +1547,14 @@ async function handleInteraction(interaction: any) {
 
     // ── status (OWNER ONLY) ──
     else if (commandName === "status") {
-      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", ephemeral: true });
+      if (!isOwner) return interaction.reply({ content: "Réservé au propriétaire.", flags: MessageFlags.Ephemeral });
       const presence = interaction.options.getString("presence", true) as any;
       const activite = interaction.options.getString("activite");
       client!.user!.setPresence({
         status: presence,
         activities: activite ? [{ name: activite, type: ActivityType.Playing }] : [],
       });
-      await interaction.reply({ content: `✅ Statut changé en **${presence}**${activite ? ` avec l'activité **${activite}**` : ""}.`, ephemeral: true });
+      await interaction.reply({ content: `✅ Statut changé en **${presence}**${activite ? ` avec l'activité **${activite}**` : ""}.`, flags: MessageFlags.Ephemeral });
     }
 
     // ── ask ──
@@ -1838,9 +1842,9 @@ async function handleInteraction(interaction: any) {
     console.error(`[Discord] Erreur sur /${commandName}:`, err.message);
     try {
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: "❌ Une erreur est survenue, désolé.", ephemeral: true });
+        await interaction.followUp({ content: "❌ Une erreur est survenue, désolé.", flags: MessageFlags.Ephemeral });
       } else {
-        await interaction.reply({ content: "❌ Une erreur est survenue, désolé.", ephemeral: true });
+        await interaction.reply({ content: "❌ Une erreur est survenue, désolé.", flags: MessageFlags.Ephemeral });
       }
     } catch {}
   }

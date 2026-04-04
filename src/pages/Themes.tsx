@@ -166,24 +166,17 @@ const SPLASH_OPTIONS: { id: SplashTheme; label: string; description: string; pre
     ),
   },
   {
-    id: "cyberpunk",
-    label: "Cyberpunk",
-    description: "Glitch néon rose & cyan",
+    id: "void" as SplashTheme,
+    label: "Void",
+    description: "Trou noir cosmique",
     preview: (
-      <div className="w-full h-full bg-[#02000a] flex items-center justify-center rounded-xl overflow-hidden relative">
-        <div className="absolute inset-0">
-          {[20,40,60,80].map(pct => (
-            <div key={pct} className="absolute left-0 right-0" style={{ top: `${pct}%`, height: 1, background: "rgba(0,240,255,0.08)" }} />
-          ))}
-        </div>
-        <div className="relative flex flex-col items-center gap-1">
-          <span className="text-sm font-black font-mono" style={{ color: "#fff", textShadow: "-1px 0 #ff00cc, 1px 0 #00f0ff" }}>N</span>
-          <div className="flex items-center gap-1">
-            <div className="h-px w-4" style={{ background: "linear-gradient(90deg, transparent, #00f0ff)" }} />
-            <span className="text-[7px] font-mono tracking-widest" style={{ color: "#00f0ff" }}>NEXUS</span>
-            <div className="h-px w-4" style={{ background: "linear-gradient(90deg, #ff00cc, transparent)" }} />
-          </div>
-        </div>
+      <div className="w-full h-full bg-[#00000a] flex items-center justify-center rounded-xl overflow-hidden relative">
+        <div className="absolute inset-0 rounded-xl" style={{ background: "radial-gradient(circle at 50% 50%, rgba(60,20,140,0.5) 0%, rgba(20,5,60,0.3) 40%, transparent 70%)" }} />
+        {[40,60,80].map((r, i) => (
+          <div key={r} className="absolute rounded-full" style={{ width: r, height: r, left: "50%", top: "50%", transform: "translate(-50%,-50%)", border: `${0.5 + i*0.3}px solid rgba(80,30,200,${0.4 - i*0.1})` }} />
+        ))}
+        <div className="absolute rounded-full" style={{ width: 18, height: 18, left: "50%", top: "50%", transform: "translate(-50%,-50%)", background: "#000", boxShadow: "0 0 12px rgba(80,30,200,0.8)" }} />
+        <span className="absolute font-black font-mono text-[8px] tracking-widest" style={{ bottom: "28%", color: "rgba(160,100,255,0.7)", textShadow: "0 0 6px rgba(100,40,200,0.6)" }}>NEXUS</span>
       </div>
     ),
   },
@@ -285,36 +278,34 @@ const SPLASH_OPTIONS: { id: SplashTheme; label: string; description: string; pre
     ),
   },
   {
-    id: "neon" as SplashTheme,
-    label: "Néon",
-    description: "Enseigne néon multicolore",
+    id: "sakura" as SplashTheme,
+    label: "Sakura",
+    description: "Pétales de cerisier",
     preview: (
-      <div className="w-full h-full flex items-center justify-center rounded-xl overflow-hidden" style={{ background: "#08000f" }}>
-        <div className="flex items-center gap-0.5 px-3 py-2 rounded-lg" style={{ border: "1px solid rgba(255,0,170,0.35)", boxShadow: "0 0 8px rgba(255,0,170,0.2)" }}>
-          {["N","E","X","U","S"].map((l, i) => (
-            <span key={i} className="text-sm font-black" style={{
-              fontFamily: "'Arial Black', Impact, sans-serif",
-              color: ["#ff00aa","#ff6600","#ffee00","#00ff88","#00aaff"][i],
-              textShadow: `0 0 6px ${["#ff00aa","#ff6600","#ffee00","#00ff88","#00aaff"][i]}`,
-            }}>{l}</span>
-          ))}
+      <div className="w-full h-full flex items-center justify-center rounded-xl overflow-hidden relative" style={{ background: "linear-gradient(180deg, #0a0010 0%, #1a0525 100%)" }}>
+        <div className="absolute inset-0 rounded-xl" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(255,100,180,0.08) 0%, transparent 70%)" }} />
+        {["✿","❀","✿","❀"].map((p, i) => (
+          <span key={i} className="absolute text-[8px]" style={{ color: `rgba(255,${120+i*20},${180+i*10},0.7)`, left: `${15 + i*22}%`, top: `${20 + (i%2)*30}%` }}>{p}</span>
+        ))}
+        <div className="flex flex-col items-center gap-1 relative z-10">
+          <span className="text-[11px] font-black tracking-widest" style={{ fontFamily: "'Arial Black'", background: "linear-gradient(180deg, #ffd6ee, #ff80c0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textShadow: "none", filter: "drop-shadow(0 0 4px rgba(255,100,180,0.6))" }}>NEXUS</span>
+          <span className="text-[6px] tracking-widest font-mono" style={{ color: "rgba(255,180,220,0.6)" }}>✿ panel ✿</span>
         </div>
       </div>
     ),
   },
   {
-    id: "vaporwave" as SplashTheme,
-    label: "Vaporwave",
-    description: "Synthwave rétro-futuriste",
+    id: "storm" as SplashTheme,
+    label: "Storm",
+    description: "Tempête électrique",
     preview: (
-      <div className="w-full h-full rounded-xl overflow-hidden relative flex flex-col items-center justify-center" style={{ background: "linear-gradient(180deg, #0d0221 0%, #2d1155 100%)" }}>
-        <div className="absolute" style={{ top: "15%", left: "50%", transform: "translateX(-50%)", width: 32, height: 32 }}>
-          <div className="w-full h-full rounded-full" style={{ background: "linear-gradient(180deg, #ffdd00, #ff6600, #ff0080)", position: "relative", overflow: "hidden" }}>
-            {[0,1,2].map(i => <div key={i} className="absolute left-0 right-0 bg-black" style={{ top: `${55+i*14}%`, height: 3 }} />)}
-          </div>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0" style={{ height: "45%", background: "repeating-linear-gradient(0deg, rgba(255,0,200,0.12) 0px, rgba(255,0,200,0.12) 1px, transparent 1px, transparent 8px)" }} />
-        <span className="relative z-10 text-[10px] font-black tracking-widest mt-8" style={{ fontFamily: "'Arial Black'", background: "linear-gradient(90deg, #ff71ce, #b967ff, #05ffa1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>NEXUS</span>
+      <div className="w-full h-full rounded-xl overflow-hidden relative flex items-center justify-center" style={{ background: "#060810" }}>
+        <div className="absolute inset-0 rounded-xl" style={{ background: "radial-gradient(ellipse 100% 40% at 50% 0%, rgba(30,50,120,0.7) 0%, transparent 60%)" }} />
+        {[25,50,75].map((x, i) => (
+          <div key={i} className="absolute" style={{ left: `${x}%`, top: 0, width: 1, height: `${40+i*15}%`, background: `linear-gradient(180deg, transparent, rgba(${100+i*30},${150+i*20},255,0.8), transparent)`, filter: "blur(0.5px)" }} />
+        ))}
+        <div className="h-px w-3/4 absolute" style={{ top: "55%", background: "linear-gradient(90deg, transparent, rgba(120,180,255,0.8), transparent)" }} />
+        <span className="relative z-10 text-[11px] font-black tracking-widest" style={{ fontFamily: "'Arial Black'", color: "#c8e0ff", textShadow: "0 0 8px rgba(100,160,255,0.9)", marginTop: 20 }}>NEXUS</span>
       </div>
     ),
   },
