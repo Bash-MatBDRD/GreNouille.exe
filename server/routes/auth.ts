@@ -21,12 +21,29 @@ router.post("/logout", authenticateToken, (req: any, res) => {
   res.json({ message: "Logged out" });
 });
 
-router.get("/me", authenticateToken, (req: any, res) => {
+router.get("/me", authenticateToken, async (req: any, res) => {
   const stmt = db.prepare(
-    "SELECT id, username, email, discordId, twoFactorEnabled, spotifyAccessToken, avatarUrl FROM users WHERE id = ?"
+    "SELECT id, username, email, discordId, twoFactorEnabled, spotifyAccessToken, avatarUrl, supabase_id FROM users WHERE id = ?"
   );
-  const user = stmt.get(req.user.id) as any;
+  let user = stmt.get(req.user.id) as any;
   if (!user) return res.status(404).json({ error: "User not found" });
+
+  // Restore Spotify tokens from Supabase metadata if wiped (e.g. after Render cold start)
+  if (!user.spotifyAccessToken && user.supabase_id) {
+    try {
+      const { data } = await supabaseAdmin.auth.admin.getUserById(user.supabase_id);
+      const meta = data?.user?.user_metadata;
+      if (meta?.spotifyAccessToken) {
+        db.prepare(
+          "UPDATE users SET spotifyAccessToken = ?, spotifyRefreshToken = ?, spotifyTokenExpiry = ? WHERE id = ?"
+        ).run(meta.spotifyAccessToken, meta.spotifyRefreshToken ?? null, meta.spotifyTokenExpiry ?? 0, user.id);
+        user = { ...user, spotifyAccessToken: meta.spotifyAccessToken };
+      }
+    } catch {
+      // Non-blocking — Supabase unavailable or no tokens stored
+    }
+  }
+
   res.json({ user: { ...user, hasSpotify: !!user.spotifyAccessToken } });
 });
 
